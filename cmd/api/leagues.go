@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
+
+	"github.com/Robert-litts/fantasy-football-archive/internal/data"
 )
 
 func (app *application) showLeagueHandler(w http.ResponseWriter, r *http.Request) {
@@ -12,5 +13,18 @@ func (app *application) showLeagueHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	fmt.Fprintf(w, "show the details of league %d\n", id)
+	league := data.League{
+		Id:          id,
+		LeagueId:    12345,
+		Year:        2013,
+		TeamCount:   8,
+		CurrentWeek: 15,
+		NflWeek:     0,
+	}
+
+	err = app.writeJSON(w, http.StatusOK, league, nil)
+	if err != nil {
+		app.logger.Error(err.Error())
+		http.Error(w, "The server encountered a problem and could not process your request", http.StatusInternalServerError)
+	}
 }

@@ -1,0 +1,34 @@
+# Go binary files
+/bin/
+/obj/
+
+# Go workspace directory
+/vendor/
+
+# Build output directories
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Go test binary, if you have it
+*.test
+
+# IDE or editor specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Go-specific directories
+*.log
+
+# env file
+.env

@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Robert-litts/fantasy-football-archive/internal/db"
 	_ "github.com/lib/pq"
 
 	"github.com/joho/godotenv"
@@ -31,8 +32,9 @@ type config struct {
 }
 
 type application struct {
-	config config
-	logger *slog.Logger
+	config  config
+	logger  *slog.Logger
+	queries *db.Queries
 }
 
 func main() {
@@ -79,19 +81,22 @@ func main() {
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-	db, err := openDB(cfg)
+	dbConn, err := openDB(cfg)
 	if err != nil {
 		logger.Error(err.Error())
 		os.Exit(1)
 	}
 
-	defer db.Close()
+	defer dbConn.Close()
 
 	logger.Info("database connection pool established")
 
+	queries := db.New(dbConn)
+
 	app := &application{
-		config: cfg,
-		logger: logger,
+		config:  cfg,
+		logger:  logger,
+		queries: queries,
 	}
 
 	srv := &http.Server{

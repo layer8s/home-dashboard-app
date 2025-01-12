@@ -1,9 +1,8 @@
 package main
 
 import (
+	"database/sql"
 	"net/http"
-
-	"github.com/Robert-litts/fantasy-football-archive/internal/data"
 )
 
 func (app *application) showLeagueHandler(w http.ResponseWriter, r *http.Request) {
@@ -13,13 +12,18 @@ func (app *application) showLeagueHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	league := data.League{
-		Id:          id,
-		LeagueId:    12345,
-		Year:        2013,
-		TeamCount:   8,
-		CurrentWeek: 15,
-		NflWeek:     0,
+	app.logger.Info("attempting to fetch league", "id", id)
+
+	// Use the SQLC-generated query method
+	league, err := app.queries.GetLeagueById(r.Context(), int32(id))
+	if err != nil {
+		app.logger.Error("database error", "error", err)
+		if err == sql.ErrNoRows {
+			app.notFoundResponse(w, r)
+			return
+		}
+		app.serverErrorResponse(w, r, err)
+		return
 	}
 
 	err = app.writeJSON(w, http.StatusOK, envelope{"league": league}, nil)

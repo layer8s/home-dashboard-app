@@ -5,19 +5,15 @@ import (
 	"database/sql"
 	"flag"
 	"fmt"
-	"log"
 	"log/slog"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/Robert-litts/fantasy-football-archive/internal/db"
 	"github.com/gorilla/sessions"
 	_ "github.com/lib/pq"
 	"github.com/markbates/goth/gothic"
-
-	"github.com/joho/godotenv"
 )
 
 const version = "1.0.0"
@@ -58,34 +54,7 @@ type application struct {
 
 func main() {
 	// Load environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("Failed to load the env vars: %v", err)
-	}
-	port, err := strconv.Atoi(os.Getenv("PORT"))
-	if err != nil {
-		log.Fatal("PORT environment variable not set")
-	}
-	env := os.Getenv("ENV")
-	if env == "" {
-		log.Fatal("ENV environment variable not set")
-	}
-
-	dsn := os.Getenv("DB_URL")
-	if dsn == "" {
-		log.Fatal("DB_URL environment variable not set")
-	}
-	dbMaxOpenConns, err := strconv.Atoi(os.Getenv("DB_MAX_OPEN_CONNS"))
-	if err != nil {
-		log.Fatal("DB_MAX_OPEN_CONNS environment variable not set")
-	}
-	dbMaxIdleConns, err := strconv.Atoi(os.Getenv("DB_MAX_IDLE_CONNS"))
-	if err != nil {
-		log.Fatal("DB_MAX_IDLE_CONNS environment variable not set")
-	}
-	dbMaxIdleTime, err := time.ParseDuration(os.Getenv("DB_MAX_IDLE_TIME"))
-	if err != nil {
-		log.Fatal("DB_MAX_IDLE_TIME environment variable not set")
-	}
+	port, env, dsn, dbMaxOpenConns, dbMaxIdleConns, dbMaxIdleTime, sessionKey := loadEnvironment()
 
 	var cfg config
 
@@ -133,11 +102,6 @@ func main() {
 
 	queries := db.New(dbConn)
 
-	sessionKey := os.Getenv("SESSION_KEY")
-	if sessionKey == "" {
-		logger.Error("SESSION_KEY must be set")
-		os.Exit(1)
-	}
 	cfg.sessionKey = sessionKey
 
 	app := &application{

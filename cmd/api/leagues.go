@@ -2,7 +2,11 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"net/http"
+
+	"github.com/Robert-litts/fantasy-football-archive/internal/data"
+	"github.com/Robert-litts/fantasy-football-archive/internal/validator"
 )
 
 func (app *application) showLeagueHandler(w http.ResponseWriter, r *http.Request) {
@@ -30,4 +34,38 @@ func (app *application) showLeagueHandler(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
+}
+
+func (app *application) listLeaguesHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Id          int
+		LeagueId    int
+		Year        int
+		TeamCount   int
+		CurrentWeek int
+		NflWeek     int
+		data.Filters
+	}
+
+	v := validator.New()
+	qs := r.URL.Query()
+
+	// Read the page, page_size, and sort query string values into the embedded struct.
+	input.Filters.Page = app.readInt(qs, "page", 1, v)
+	input.Filters.PageSize = app.readInt(qs, "page_size", 20, v)
+	input.Filters.Sort = app.readString(qs, "sort", "id")
+	input.Filters.SortSafelist = []string{"id", "nflWeek", "year", "currentWeek", "teamCount", "-id", "-year", "-teamCount"}
+
+	input.CurrentWeek = app.readInt(qs, "currentWeek", 0, v)
+	input.NflWeek = app.readInt(qs, "nflWeek", 0, v)
+	input.Year = app.readInt(qs, "year", 0, v)
+	input.TeamCount = app.readInt(qs, "teamCount", 0, v)
+	input.Id = app.readInt(qs, "id", 0, v)
+
+	if data.ValidateFilters(v, input.Filters); !v.Valid() {
+		app.failedValidationResponse(w, r, v.Errors)
+		return
+	}
+	// Dump the contents of the input struct in a HTTP response.
+	fmt.Fprintf(w, "%+v\n", input)
 }

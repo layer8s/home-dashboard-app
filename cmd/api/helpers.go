@@ -5,10 +5,16 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/Robert-litts/fantasy-football-archive/internal/validator"
+	"github.com/joho/godotenv"
 	"github.com/julienschmidt/httprouter"
 )
 
@@ -88,4 +94,70 @@ func (app *application) writeJSON(w http.ResponseWriter, status int, data envelo
 	w.Write(js)
 
 	return nil
+}
+
+func (app *application) readString(qs url.Values, key string, defaultValue string) string {
+	s := qs.Get(key)
+	if s == "" {
+		return defaultValue
+	}
+	return s
+}
+func (app *application) readCSV(qs url.Values, key string, defaultValue []string) []string {
+	csv := qs.Get(key)
+	if csv == "" {
+		return defaultValue
+	}
+	return strings.Split(csv, ",")
+}
+func (app *application) readInt(qs url.Values, key string, defaultValue int, v *validator.Validator) int {
+	s := qs.Get(key)
+	if s == "" {
+		return defaultValue
+	}
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		v.AddError(key, "must be an integer value")
+		return defaultValue
+	}
+	return i
+}
+
+func loadEnvironment() (int, string, string, int, int, time.Duration, string) {
+	if err := godotenv.Load(); err != nil {
+		log.Fatalf("Failed to load the env vars: %v", err)
+	}
+	port, err := strconv.Atoi(os.Getenv("PORT"))
+	if err != nil {
+		log.Fatal("PORT environment variable not set")
+	}
+	env := os.Getenv("ENV")
+	if env == "" {
+		log.Fatal("ENV environment variable not set")
+	}
+
+	dsn := os.Getenv("DB_URL")
+	if dsn == "" {
+		log.Fatal("DB_URL environment variable not set")
+	}
+	dbMaxOpenConns, err := strconv.Atoi(os.Getenv("DB_MAX_OPEN_CONNS"))
+	if err != nil {
+		log.Fatal("DB_MAX_OPEN_CONNS environment variable not set")
+	}
+	dbMaxIdleConns, err := strconv.Atoi(os.Getenv("DB_MAX_IDLE_CONNS"))
+	if err != nil {
+		log.Fatal("DB_MAX_IDLE_CONNS environment variable not set")
+	}
+	dbMaxIdleTime, err := time.ParseDuration(os.Getenv("DB_MAX_IDLE_TIME"))
+	if err != nil {
+		log.Fatal("DB_MAX_IDLE_TIME environment variable not set")
+	}
+
+	sessionKey := os.Getenv("SESSION_KEY")
+	if sessionKey == "" {
+		log.Fatal("SESSION_KEY must be set")
+	}
+
+	//return the env variables
+	return port, env, dsn, dbMaxOpenConns, dbMaxIdleConns, dbMaxIdleTime, sessionKey
 }

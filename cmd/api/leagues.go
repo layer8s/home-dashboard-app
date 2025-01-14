@@ -2,7 +2,6 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
 	"net/http"
 
 	"github.com/Robert-litts/fantasy-football-archive/internal/data"
@@ -66,6 +65,20 @@ func (app *application) listLeaguesHandler(w http.ResponseWriter, r *http.Reques
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
-	// Dump the contents of the input struct in a HTTP response.
-	fmt.Fprintf(w, "%+v\n", input)
+
+	leagues, err := app.queries.GetLeagues(r.Context())
+	if err != nil {
+		app.logger.Error("database error", "error", err)
+		if err == sql.ErrNoRows {
+			app.notFoundResponse(w, r)
+			return
+		}
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"leagues": leagues}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
 }

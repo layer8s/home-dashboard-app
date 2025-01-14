@@ -64,9 +64,6 @@ func (app *application) authProviderHandler(w http.ResponseWriter, r *http.Reque
 	if auth, ok := session.Values["authenticated"].(bool); ok && auth {
 		userID := session.Values["user_id"]
 		app.logger.Info("user already authenticated", "provider", provider, "user_id", userID)
-
-		// You might want to verify the session or refresh user data here
-
 		err = app.writeJSON(w, http.StatusOK, envelope{"message": "Already authenticated", "user_id": userID}, nil)
 		if err != nil {
 			app.serverErrorResponse(w, r, err)

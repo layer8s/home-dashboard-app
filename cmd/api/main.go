@@ -13,12 +13,28 @@ import (
 	"time"
 
 	"github.com/Robert-litts/fantasy-football-archive/internal/db"
+	"github.com/gorilla/sessions"
 	_ "github.com/lib/pq"
+	"github.com/markbates/goth/gothic"
 
 	"github.com/joho/godotenv"
 )
 
 const version = "1.0.0"
+
+type AuthConfig struct {
+	BaseCallbackURL string
+	Providers       map[string]ProviderConfig
+}
+
+// ProviderConfig holds the configuration for a specific auth provider
+type ProviderConfig struct {
+	Name         string
+	ClientID     string
+	ClientSecret string
+	Scopes       []string
+	ExtraConfig  map[string]string
+}
 
 type config struct {
 	port int
@@ -29,12 +45,15 @@ type config struct {
 		maxIdleConns int
 		maxIdleTime  time.Duration
 	}
+	auth       AuthConfig
+	sessionKey string
 }
 
 type application struct {
-	config  config
-	logger  *slog.Logger
-	queries *db.Queries
+	config       config
+	logger       *slog.Logger
+	queries      *db.Queries
+	sessionStore sessions.Store
 }
 
 func main() {
@@ -79,6 +98,27 @@ func main() {
 	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", dbMaxIdleTime, "PostgreSQL max connection idle time")
 	flag.Parse()
 
+	cfg.auth = AuthConfig{
+		BaseCallbackURL: fmt.Sprintf("http://localhost:%d", port),
+		Providers: map[string]ProviderConfig{
+			"auth0": {
+				Name:         "auth0",
+				ClientID:     os.Getenv("AUTH0_KEY"),
+				ClientSecret: os.Getenv("AUTH0_SECRET"),
+				ExtraConfig: map[string]string{
+					"domain": os.Getenv("AUTH0_DOMAIN"),
+				},
+			},
+			"github": {
+				Name:         "github",
+				ClientID:     os.Getenv("GITHUB_KEY"),
+				ClientSecret: os.Getenv("GITHUB_SECRET"),
+				Scopes:       []string{"user:email", "read:user"},
+			},
+			// Add more providers as needed
+		},
+	}
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
 	dbConn, err := openDB(cfg)
@@ -93,11 +133,26 @@ func main() {
 
 	queries := db.New(dbConn)
 
-	app := &application{
-		config:  cfg,
-		logger:  logger,
-		queries: queries,
+	sessionKey := os.Getenv("SESSION_KEY")
+	if sessionKey == "" {
+		logger.Error("SESSION_KEY must be set")
+		os.Exit(1)
 	}
+	cfg.sessionKey = sessionKey
+
+	app := &application{
+		config:       cfg,
+		logger:       logger,
+		queries:      queries,
+		sessionStore: sessions.NewCookieStore([]byte(cfg.sessionKey)),
+	}
+
+	// Initialize the auth providers
+	if err := app.InitProviders(); err != nil {
+		logger.Error("failed to initialize auth providers", "error", err)
+		os.Exit(1)
+	}
+	gothic.Store = app.sessionStore
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.port),

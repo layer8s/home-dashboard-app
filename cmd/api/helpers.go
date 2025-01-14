@@ -23,6 +23,16 @@ func (app *application) readIDParam(r *http.Request) (int64, error) {
 	return id, nil
 }
 
+func (app *application) readProviderParam(r *http.Request) (string, error) {
+	params := httprouter.ParamsFromContext(r.Context())
+	provider := params.ByName("provider")
+
+	if provider == "" {
+		return "", errors.New("no provider specified")
+	}
+	return provider, nil
+}
+
 func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst any) error {
 	maxBytes := 1_048_576
 	r.Body = http.MaxBytesReader(w, r.Body, int64(maxBytes))

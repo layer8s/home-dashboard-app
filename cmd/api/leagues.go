@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/Robert-litts/fantasy-football-archive/internal/data"
+	"github.com/Robert-litts/fantasy-football-archive/internal/db"
 	"github.com/Robert-litts/fantasy-football-archive/internal/validator"
 )
 
@@ -66,7 +67,24 @@ func (app *application) listLeaguesHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	leagues, err := app.queries.GetLeagues(r.Context())
+	leagueParams := db.GetLeaguesParams{
+		Year: int32(input.Year),
+		TeamCount: sql.NullInt32{
+			Int32: int32(input.TeamCount),
+			Valid: input.TeamCount != 0,
+		},
+		CurrentWeek: sql.NullInt32{
+			Int32: int32(input.CurrentWeek),
+			Valid: input.CurrentWeek != 0,
+		},
+		NflWeek: sql.NullInt32{
+			Int32: int32(input.NflWeek),
+			Valid: input.NflWeek != 0,
+		},
+		Column5: input.Filters.Sort, // Sort Column
+	}
+
+	leagues, err := app.queries.GetLeagues(r.Context(), leagueParams)
 	if err != nil {
 		app.logger.Error("database error", "error", err)
 		if err == sql.ErrNoRows {

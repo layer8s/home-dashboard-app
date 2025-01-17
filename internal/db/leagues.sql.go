@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const getLeagueById = `-- name: GetLeagueById :one
@@ -30,12 +31,40 @@ func (q *Queries) GetLeagueById(ctx context.Context, id int32) (League, error) {
 }
 
 const getLeagues = `-- name: GetLeagues :many
-SELECT "id", "leagueId", "year", "teamCount", "currentWeek", "nflWeek" 
+SELECT "id", "leagueId", "year", "teamCount", "currentWeek", "nflWeek"
 FROM "leagues"
+WHERE ("year" = $1)
+AND ("teamCount" = $2 OR $2 IS NULL)
+AND ("currentWeek" = $3 OR $3 IS NULL)
+AND ("nflWeek" = $4 OR $4 IS NULL)
+ORDER BY
+CASE $5
+    WHEN 'id' THEN "id"
+    WHEN 'year' THEN "year"
+    WHEN 'teamCount' THEN "teamCount"
+END,
+CASE 
+    WHEN $5 LIKE '-%' THEN 'DESC'
+    ELSE 'ASC'
+END
 `
 
-func (q *Queries) GetLeagues(ctx context.Context) ([]League, error) {
-	rows, err := q.db.QueryContext(ctx, getLeagues)
+type GetLeaguesParams struct {
+	Year        int32         `json:"year"`
+	TeamCount   sql.NullInt32 `json:"teamCount"`
+	CurrentWeek sql.NullInt32 `json:"currentWeek"`
+	NflWeek     sql.NullInt32 `json:"nflWeek"`
+	Column5     interface{}   `json:"column_5"`
+}
+
+func (q *Queries) GetLeagues(ctx context.Context, arg GetLeaguesParams) ([]League, error) {
+	rows, err := q.db.QueryContext(ctx, getLeagues,
+		arg.Year,
+		arg.TeamCount,
+		arg.CurrentWeek,
+		arg.NflWeek,
+		arg.Column5,
+	)
 	if err != nil {
 		return nil, err
 	}

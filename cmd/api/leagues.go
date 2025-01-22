@@ -68,7 +68,9 @@ func (app *application) listLeaguesHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	leagueParams := db.GetLeaguesParams{
-		Year: int32(input.Year),
+		ID:       int32(input.Id),
+		LeagueId: int32(input.LeagueId),
+		Year:     int32(input.Year),
 		TeamCount: sql.NullInt32{
 			Int32: int32(input.TeamCount),
 			Valid: input.TeamCount != 0,
@@ -81,8 +83,12 @@ func (app *application) listLeaguesHandler(w http.ResponseWriter, r *http.Reques
 			Int32: int32(input.NflWeek),
 			Valid: input.NflWeek != 0,
 		},
-		Column5: input.Filters.Sort, // Sort Column
+		Column7: input.Filters.Sort, // Sort Column
+		Limit:   int32(input.Filters.PageSize),
+		Offset:  int32((input.Filters.Page - 1) * input.Filters.PageSize),
 	}
+
+	app.logger.Info("League Params", leagueParams)
 
 	leagues, err := app.queries.GetLeagues(r.Context(), leagueParams)
 	if err != nil {

@@ -110,6 +110,7 @@ func (app *application) readCSV(qs url.Values, key string, defaultValue []string
 	}
 	return strings.Split(csv, ",")
 }
+
 func (app *application) readInt(qs url.Values, key string, defaultValue int, v *validator.Validator) int {
 	s := qs.Get(key)
 	if s == "" {
@@ -121,6 +122,19 @@ func (app *application) readInt(qs url.Values, key string, defaultValue int, v *
 		return defaultValue
 	}
 	return i
+}
+
+func (app *application) readIntQuery(qs url.Values, key string, v *validator.Validator) int32 {
+	s := qs.Get(key)
+	if s == "" {
+		return -1 // Sentinel value to indicate "no value"
+	}
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		v.AddError(key, "must be an integer value")
+		return -1 // Return sentinel value on error
+	}
+	return int32(i) // Return the valid int32 value
 }
 
 func loadEnvironment() (int, string, string, int, int, time.Duration, string) {

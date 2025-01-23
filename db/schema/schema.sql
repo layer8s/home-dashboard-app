@@ -1,10 +1,21 @@
-CREATE TABLE "leagues" (
-    "id" INTEGER PRIMARY KEY,
+-- CREATE TABLE "leagues" (
+--     "id" INTEGER PRIMARY KEY,
+--     "leagueId" INTEGER NOT NULL,
+--     "year" INTEGER NOT NULL,
+--     "teamCount" INTEGER,
+--     "currentWeek" INTEGER,
+--     "nflWeek" INTEGER,
+--     CONSTRAINT "uix_league_year" UNIQUE ("leagueId", "year")
+-- );
+
+CREATE TABLE leagues (
+    "id" SERIAL PRIMARY KEY,
     "leagueId" INTEGER NOT NULL,
     "year" INTEGER NOT NULL,
-    "teamCount" INTEGER,
-    "currentWeek" INTEGER,
-    "nflWeek" INTEGER,
+    "teamCount" INTEGER NOT NULL,
+    "currentWeek" INTEGER NOT NULL DEFAULT 0,
+    "nflWeek" INTEGER NOT NULL DEFAULT 0,
+    
     CONSTRAINT "uix_league_year" UNIQUE ("leagueId", "year")
 );
 

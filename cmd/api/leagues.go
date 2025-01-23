@@ -38,12 +38,12 @@ func (app *application) showLeagueHandler(w http.ResponseWriter, r *http.Request
 
 func (app *application) listLeaguesHandler(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Id          int
-		LeagueId    int
-		Year        int
-		TeamCount   int
-		CurrentWeek int
-		NflWeek     int
+		Id          int32
+		LeagueId    int32
+		Year        int32
+		TeamCount   int32
+		CurrentWeek int32
+		NflWeek     int32
 		data.Filters
 	}
 
@@ -56,11 +56,12 @@ func (app *application) listLeaguesHandler(w http.ResponseWriter, r *http.Reques
 	input.Filters.Sort = app.readString(qs, "sort", "id")
 	input.Filters.SortSafelist = []string{"id", "nflWeek", "year", "currentWeek", "teamCount", "-id", "-year", "-teamCount"}
 
-	input.CurrentWeek = app.readInt(qs, "currentWeek", 0, v)
-	input.NflWeek = app.readInt(qs, "nflWeek", 0, v)
-	input.Year = app.readInt(qs, "year", 0, v)
-	input.TeamCount = app.readInt(qs, "teamCount", 0, v)
-	input.Id = app.readInt(qs, "id", 0, v)
+	input.CurrentWeek = app.readIntQuery(qs, "currentWeek", v)
+	input.NflWeek = app.readIntQuery(qs, "nflWeek", v)
+	input.Year = app.readIntQuery(qs, "year", v)
+	input.TeamCount = app.readIntQuery(qs, "teamCount", v)
+	input.Id = app.readIntQuery(qs, "id", v)
+	input.LeagueId = app.readIntQuery(qs, "leagueId", v)
 
 	if data.ValidateFilters(v, input.Filters); !v.Valid() {
 		app.failedValidationResponse(w, r, v.Errors)
@@ -68,24 +69,14 @@ func (app *application) listLeaguesHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	leagueParams := db.GetLeaguesParams{
-		ID:       int32(input.Id),
-		LeagueId: int32(input.LeagueId),
-		Year:     int32(input.Year),
-		TeamCount: sql.NullInt32{
-			Int32: int32(input.TeamCount),
-			Valid: input.TeamCount != 0,
-		},
-		CurrentWeek: sql.NullInt32{
-			Int32: int32(input.CurrentWeek),
-			Valid: input.CurrentWeek != 0,
-		},
-		NflWeek: sql.NullInt32{
-			Int32: int32(input.NflWeek),
-			Valid: input.NflWeek != 0,
-		},
-		Column7: input.Filters.Sort, // Sort Column
-		Limit:   int32(input.Filters.PageSize),
-		Offset:  int32((input.Filters.Page - 1) * input.Filters.PageSize),
+		ID:          input.Id,
+		LeagueId:    input.LeagueId,
+		Year:        input.Year,
+		TeamCount:   input.TeamCount,
+		CurrentWeek: input.CurrentWeek,
+		NflWeek:     input.NflWeek,
+		Limit:       int32(input.Filters.PageSize),
+		Offset:      int32((input.Filters.Page - 1) * input.Filters.PageSize),
 	}
 
 	app.logger.Info("League Params", leagueParams)

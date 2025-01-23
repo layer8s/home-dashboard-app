@@ -7,7 +7,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 )
 
 const getLeagueById = `-- name: GetLeagueById :one
@@ -31,6 +30,7 @@ func (q *Queries) GetLeagueById(ctx context.Context, id int32) (League, error) {
 }
 
 const getLeagues = `-- name: GetLeagues :many
+
 SELECT
     "id",
     "leagueId",
@@ -39,43 +39,72 @@ SELECT
     "currentWeek",
     "nflWeek"
 FROM
-    "leagues"
+    leagues
 WHERE
-    ("id" = COALESCE($1, "id") OR $1 IS NULL)
-    AND ("leagueId" = COALESCE($2, "leagueId") OR $2 IS NULL)
-    AND ("year" = COALESCE($3, "year") OR $3 IS NULL)
-    AND ("teamCount" = COALESCE($4, "teamCount") OR $4 IS NULL)
-    AND ("currentWeek" = COALESCE($5, "currentWeek") OR $5 IS NULL)
-    AND ("nflWeek" = COALESCE($6, "nflWeek") OR $6 IS NULL)
+    ("id" = $1 OR $1 = -1)
+    AND ("leagueId" = $2 OR $2 = -1)
+    AND ("year" = $3 OR $3 = -1)
+    AND ("teamCount" = $4 OR $4 = -1)
+    AND ("currentWeek" = $5 OR $5 = -1)
+    AND ("nflWeek" = $6 OR $6 = -1)
 ORDER BY
-    CASE 
-        WHEN $7 = 'id' THEN "id"
-        WHEN $7 = 'year' THEN "year"
-        WHEN $7 = 'teamCount' THEN "teamCount"
-        WHEN $7 = 'currentWeek' THEN "currentWeek"
-        WHEN $7 = 'nflWeek' THEN "nflWeek"
-        ELSE "id"
-    END,
+    -- Dynamically choose column based on sort parameter
     CASE
-        WHEN $7 LIKE '-%' THEN 'DESC'
-        ELSE 'ASC'
-    END
-LIMIT $8
-OFFSET $9
+        WHEN $9 = 'id' THEN "id"
+        WHEN $9 = 'leagueId' THEN "leagueId"
+        WHEN $9 = 'year' THEN "year"
+        WHEN $9 = 'teamCount' THEN "teamCount"
+        WHEN $9 = 'currentWeek' THEN "currentWeek"
+        WHEN $9 = 'nflWeek' THEN "nflWeek"
+        ELSE "id"  -- Default sorting by "id"
+    END,
+    -- Use sort direction directly
+    CASE 
+        WHEN $10 = 'DESC' THEN 1
+        ELSE 0
+    END DESC
+LIMIT $7
+OFFSET $8
 `
 
 type GetLeaguesParams struct {
-	ID          int32         `json:"id"`
-	LeagueId    int32         `json:"leagueId"`
-	Year        int32         `json:"year"`
-	TeamCount   sql.NullInt32 `json:"teamCount"`
-	CurrentWeek sql.NullInt32 `json:"currentWeek"`
-	NflWeek     sql.NullInt32 `json:"nflWeek"`
-	Column7     interface{}   `json:"column_7"`
-	Limit       int32         `json:"limit"`
-	Offset      int32         `json:"offset"`
+	ID          int32       `json:"id"`
+	LeagueId    int32       `json:"leagueId"`
+	Year        int32       `json:"year"`
+	TeamCount   int32       `json:"teamCount"`
+	CurrentWeek int32       `json:"currentWeek"`
+	NflWeek     int32       `json:"nflWeek"`
+	Limit       int32       `json:"limit"`
+	Offset      int32       `json:"offset"`
+	Column9     interface{} `json:"column_9"`
+	Column10    interface{} `json:"column_10"`
 }
 
+// -- name: GetLeagues :many
+// SELECT
+//
+//	"id",
+//	"leagueId",
+//	"year",
+//	"teamCount",
+//	"currentWeek",
+//	"nflWeek"
+//
+// FROM
+//
+//	leagues
+//
+// WHERE
+//
+//	("id" = $1 OR $1 = -1)
+//	AND ("leagueId" = $2 OR $2 = -1)
+//	AND ("year" = $3 OR $3 = -1)
+//	AND ("teamCount" = $4 OR $4 = -1)
+//	AND ("currentWeek" = $5 OR $5 = -1)
+//	AND ("nflWeek" = $6 OR $6 = -1)
+//
+// LIMIT $7
+// OFFSET $8;
 func (q *Queries) GetLeagues(ctx context.Context, arg GetLeaguesParams) ([]League, error) {
 	rows, err := q.db.QueryContext(ctx, getLeagues,
 		arg.ID,
@@ -84,9 +113,10 @@ func (q *Queries) GetLeagues(ctx context.Context, arg GetLeaguesParams) ([]Leagu
 		arg.TeamCount,
 		arg.CurrentWeek,
 		arg.NflWeek,
-		arg.Column7,
 		arg.Limit,
 		arg.Offset,
+		arg.Column9,
+		arg.Column10,
 	)
 	if err != nil {
 		return nil, err

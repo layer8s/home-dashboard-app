@@ -29,7 +29,7 @@ func (q *Queries) GetLeagueById(ctx context.Context, id int32) (League, error) {
 	return i, err
 }
 
-const getLeagues = `-- name: GetLeagues :many
+const getLeaguesAsc = `-- name: GetLeaguesAsc :many
 
 SELECT
     "id",
@@ -48,7 +48,6 @@ WHERE
     AND ("currentWeek" = $5 OR $5 = -1)
     AND ("nflWeek" = $6 OR $6 = -1)
 ORDER BY
-    -- Dynamically choose column based on sort parameter
     CASE
         WHEN $9 = 'id' THEN "id"
         WHEN $9 = 'leagueId' THEN "leagueId"
@@ -56,18 +55,13 @@ ORDER BY
         WHEN $9 = 'teamCount' THEN "teamCount"
         WHEN $9 = 'currentWeek' THEN "currentWeek"
         WHEN $9 = 'nflWeek' THEN "nflWeek"
-        ELSE "id"  -- Default sorting by "id"
-    END,
-    -- Use sort direction directly
-    CASE 
-        WHEN $10 = 'DESC' THEN 1
-        ELSE 0
-    END DESC
+        ELSE "id"
+    END ASC
 LIMIT $7
 OFFSET $8
 `
 
-type GetLeaguesParams struct {
+type GetLeaguesAscParams struct {
 	ID          int32       `json:"id"`
 	LeagueId    int32       `json:"leagueId"`
 	Year        int32       `json:"year"`
@@ -77,36 +71,10 @@ type GetLeaguesParams struct {
 	Limit       int32       `json:"limit"`
 	Offset      int32       `json:"offset"`
 	Column9     interface{} `json:"column_9"`
-	Column10    interface{} `json:"column_10"`
 }
 
-// -- name: GetLeagues :many
-// SELECT
-//
-//	"id",
-//	"leagueId",
-//	"year",
-//	"teamCount",
-//	"currentWeek",
-//	"nflWeek"
-//
-// FROM
-//
-//	leagues
-//
-// WHERE
-//
-//	("id" = $1 OR $1 = -1)
-//	AND ("leagueId" = $2 OR $2 = -1)
-//	AND ("year" = $3 OR $3 = -1)
-//	AND ("teamCount" = $4 OR $4 = -1)
-//	AND ("currentWeek" = $5 OR $5 = -1)
-//	AND ("nflWeek" = $6 OR $6 = -1)
-//
-// LIMIT $7
-// OFFSET $8;
-func (q *Queries) GetLeagues(ctx context.Context, arg GetLeaguesParams) ([]League, error) {
-	rows, err := q.db.QueryContext(ctx, getLeagues,
+func (q *Queries) GetLeaguesAsc(ctx context.Context, arg GetLeaguesAscParams) ([]League, error) {
+	rows, err := q.db.QueryContext(ctx, getLeaguesAsc,
 		arg.ID,
 		arg.LeagueId,
 		arg.Year,
@@ -116,7 +84,89 @@ func (q *Queries) GetLeagues(ctx context.Context, arg GetLeaguesParams) ([]Leagu
 		arg.Limit,
 		arg.Offset,
 		arg.Column9,
-		arg.Column10,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []League
+	for rows.Next() {
+		var i League
+		if err := rows.Scan(
+			&i.ID,
+			&i.LeagueId,
+			&i.Year,
+			&i.TeamCount,
+			&i.CurrentWeek,
+			&i.NflWeek,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLeaguesDesc = `-- name: GetLeaguesDesc :many
+SELECT
+    "id",
+    "leagueId",
+    "year",
+    "teamCount",
+    "currentWeek",
+    "nflWeek"
+FROM
+    leagues
+WHERE
+    ("id" = $1 OR $1 = -1)
+    AND ("leagueId" = $2 OR $2 = -1)
+    AND ("year" = $3 OR $3 = -1)
+    AND ("teamCount" = $4 OR $4 = -1)
+    AND ("currentWeek" = $5 OR $5 = -1)
+    AND ("nflWeek" = $6 OR $6 = -1)
+ORDER BY
+    CASE
+        WHEN $9 = 'id' THEN "id"
+        WHEN $9 = 'leagueId' THEN "leagueId"
+        WHEN $9 = 'year' THEN "year"
+        WHEN $9 = 'teamCount' THEN "teamCount"
+        WHEN $9 = 'currentWeek' THEN "currentWeek"
+        WHEN $9 = 'nflWeek' THEN "nflWeek"
+        ELSE "id"
+    END DESC
+LIMIT $7
+OFFSET $8
+`
+
+type GetLeaguesDescParams struct {
+	ID          int32       `json:"id"`
+	LeagueId    int32       `json:"leagueId"`
+	Year        int32       `json:"year"`
+	TeamCount   int32       `json:"teamCount"`
+	CurrentWeek int32       `json:"currentWeek"`
+	NflWeek     int32       `json:"nflWeek"`
+	Limit       int32       `json:"limit"`
+	Offset      int32       `json:"offset"`
+	Column9     interface{} `json:"column_9"`
+}
+
+func (q *Queries) GetLeaguesDesc(ctx context.Context, arg GetLeaguesDescParams) ([]League, error) {
+	rows, err := q.db.QueryContext(ctx, getLeaguesDesc,
+		arg.ID,
+		arg.LeagueId,
+		arg.Year,
+		arg.TeamCount,
+		arg.CurrentWeek,
+		arg.NflWeek,
+		arg.Limit,
+		arg.Offset,
+		arg.Column9,
 	)
 	if err != nil {
 		return nil, err

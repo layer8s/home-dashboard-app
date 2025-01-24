@@ -67,8 +67,12 @@ func (app *application) listLeaguesHandler(w http.ResponseWriter, r *http.Reques
 		app.failedValidationResponse(w, r, v.Errors)
 		return
 	}
+	// Sort the leagues by the specified column and direction.
+	sortVal := input.Filters.SortColumn()
+	sortDir := input.Filters.SortDirection()
 
-	leagueParams := db.GetLeaguesParams{
+	// Set up the query parameters based on the filters, convert based on sort Direction.
+	baseParams := db.GetLeaguesAscParams{
 		ID:          input.Id,
 		LeagueId:    input.LeagueId,
 		Year:        input.Year,
@@ -77,11 +81,21 @@ func (app *application) listLeaguesHandler(w http.ResponseWriter, r *http.Reques
 		NflWeek:     input.NflWeek,
 		Limit:       int32(input.Filters.PageSize),
 		Offset:      int32((input.Filters.Page - 1) * input.Filters.PageSize),
+		Column9:     sortVal,
 	}
 
-	app.logger.Info("League Params", leagueParams)
+	app.logger.Info("League Params", baseParams)
+	var leagues []db.League
+	var err error
 
-	leagues, err := app.queries.GetLeagues(r.Context(), leagueParams)
+	// Check the sort direction and call the appropriate method.
+	if sortDir == "DESC" {
+		descParams := db.GetLeaguesDescParams(baseParams)
+		leagues, err = app.queries.GetLeaguesDesc(r.Context(), descParams)
+	} else {
+		leagues, err = app.queries.GetLeaguesAsc(r.Context(), baseParams)
+	}
+
 	if err != nil {
 		app.logger.Error("database error", "error", err)
 		if err == sql.ErrNoRows {

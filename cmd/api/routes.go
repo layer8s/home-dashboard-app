@@ -14,6 +14,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/healthcheck", app.healthcheckHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/leagues", app.listLeaguesHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/leagues/:id", app.showLeagueHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/leagues/:id/teams/:id", app.showTeamHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/auth/:provider/callback", app.authCallbackHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/auth/:provider/logout", app.authLogoutHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/auth/:provider", app.authProviderHandler)

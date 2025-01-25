@@ -73,6 +73,31 @@ type GetLeaguesAscParams struct {
 	Column9     interface{} `json:"column_9"`
 }
 
+// -- name: GetLeagues :many
+// SELECT
+//
+//	"id",
+//	"leagueId",
+//	"year",
+//	"teamCount",
+//	"currentWeek",
+//	"nflWeek"
+//
+// FROM
+//
+//	leagues
+//
+// WHERE
+//
+//	("id" = $1 OR $1 = -1)
+//	AND ("leagueId" = $2 OR $2 = -1)
+//	AND ("year" = $3 OR $3 = -1)
+//	AND ("teamCount" = $4 OR $4 = -1)
+//	AND ("currentWeek" = $5 OR $5 = -1)
+//	AND ("nflWeek" = $6 OR $6 = -1)
+//
+// LIMIT $7
+// OFFSET $8;
 func (q *Queries) GetLeaguesAsc(ctx context.Context, arg GetLeaguesAscParams) ([]League, error) {
 	rows, err := q.db.QueryContext(ctx, getLeaguesAsc,
 		arg.ID,

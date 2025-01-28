@@ -19,5 +19,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/auth/:provider/logout", app.authLogoutHandler)
 	router.HandlerFunc(http.MethodGet, "/v1/auth/:provider", app.authProviderHandler)
 
+	router.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
+
 	return app.recoverPanic(router)
 }

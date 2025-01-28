@@ -137,7 +137,7 @@ func (app *application) readIntQuery(qs url.Values, key string, v *validator.Val
 	return int32(i) // Return the valid int32 value
 }
 
-func loadEnvironment() (int, string, string, int, int, time.Duration, string) {
+func loadEnvironment() (int, string, string, int, int, time.Duration, string, string) {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Failed to load the env vars: %v", err)
 	}
@@ -172,6 +172,11 @@ func loadEnvironment() (int, string, string, int, int, time.Duration, string) {
 		log.Fatal("SESSION_KEY must be set")
 	}
 
+	sendGridKey := os.Getenv("SENDGRID_API_KEY")
+	if sendGridKey == "" {
+		log.Fatal("SENDGRID_API_KEY environment variable is required")
+	}
+
 	//return the env variables
-	return port, env, dsn, dbMaxOpenConns, dbMaxIdleConns, dbMaxIdleTime, sessionKey
+	return port, env, dsn, dbMaxOpenConns, dbMaxIdleConns, dbMaxIdleTime, sessionKey, sendGridKey
 }

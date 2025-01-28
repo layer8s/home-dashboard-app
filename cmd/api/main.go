@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Robert-litts/fantasy-football-archive/internal/db"
+	"github.com/Robert-litts/fantasy-football-archive/internal/mailer"
 	"github.com/gorilla/sessions"
 	_ "github.com/lib/pq"
 	"github.com/markbates/goth/gothic"
@@ -49,11 +50,12 @@ type application struct {
 	logger       *slog.Logger
 	queries      *db.Queries
 	sessionStore sessions.Store
+	mailer       *mailer.Mailer
 }
 
 func main() {
 	// Load environment variables
-	port, env, dsn, dbMaxOpenConns, dbMaxIdleConns, dbMaxIdleTime, sessionKey := loadEnvironment()
+	port, env, dsn, dbMaxOpenConns, dbMaxIdleConns, dbMaxIdleTime, sessionKey, sendGridKey := loadEnvironment()
 
 	var cfg config
 
@@ -108,6 +110,7 @@ func main() {
 		logger:       logger,
 		queries:      queries,
 		sessionStore: sessions.NewCookieStore([]byte(cfg.sessionKey)),
+		mailer:       mailer.New(sendGridKey, "FFArchive <robert@litts.org>"),
 	}
 
 	// Initialize the auth providers

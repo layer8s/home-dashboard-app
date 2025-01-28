@@ -6,6 +6,7 @@ package db
 
 import (
 	"database/sql"
+	"time"
 )
 
 type League struct {
@@ -44,4 +45,14 @@ type Team struct {
 	DraftProjRank          sql.NullInt32  `json:"draftProjRank"`
 	PlayoffPct             sql.NullInt32  `json:"playoffPct"`
 	LogoUrl                sql.NullString `json:"logoUrl"`
+}
+
+type User struct {
+	ID           int64     `json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	Name         string    `json:"name"`
+	Email        string    `json:"email"`
+	PasswordHash []byte    `json:"password_hash"`
+	Activated    bool      `json:"activated"`
+	Version      int32     `json:"version"`
 }

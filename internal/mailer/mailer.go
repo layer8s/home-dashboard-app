@@ -5,7 +5,7 @@ import (
 	"embed"
 	"fmt"
 	"html/template"
-	"log"
+	"log/slog"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
@@ -19,13 +19,15 @@ var templateFS embed.FS
 type Mailer struct {
 	client *sendgrid.Client
 	sender string
+	logger *slog.Logger
 }
 
-func New(apiKey, senderEmail string) *Mailer {
+func New(apiKey, senderEmail string, logger *slog.Logger) *Mailer {
 	client := sendgrid.NewSendClient(apiKey)
 	return &Mailer{
 		client: client,
 		sender: senderEmail,
+		logger: logger,
 	}
 }
 
@@ -64,12 +66,16 @@ func (m Mailer) Send(recipient, templateFile string, data any) error {
 	message := mail.NewSingleEmail(from, subject.String(), to, plainTextContent, htmlContent)
 	response, err := m.client.Send(message)
 	if err != nil {
-		log.Println(err)
-		return err
-	} else {
-		fmt.Println(response.StatusCode)
-		fmt.Println(response.Body)
-		fmt.Println(response.Headers)
+		m.logger.Error("failed to send email",
+			"error", err,
+			"recipient", recipient,
+			"template", templateFile)
+		return fmt.Errorf("error sending email: %w", err)
 	}
+	m.logger.Info("email sent successfully",
+		"status", response.StatusCode,
+		"recipient", recipient,
+		"Body", response.Body,
+		"Headers", response.Headers)
 	return nil
 }

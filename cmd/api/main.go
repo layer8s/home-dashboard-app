@@ -110,7 +110,7 @@ func main() {
 		logger:       logger,
 		queries:      queries,
 		sessionStore: sessions.NewCookieStore([]byte(cfg.sessionKey)),
-		mailer:       mailer.New(sendGridKey, "FFArchive <robert@litts.org>"),
+		mailer:       mailer.New(sendGridKey, "FFArchive <robert@litts.org>", logger),
 	}
 
 	// Initialize the auth providers

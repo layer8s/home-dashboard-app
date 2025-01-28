@@ -180,3 +180,23 @@ func loadEnvironment() (int, string, string, int, int, time.Duration, string, st
 	//return the env variables
 	return port, env, dsn, dbMaxOpenConns, dbMaxIdleConns, dbMaxIdleTime, sessionKey, sendGridKey
 }
+
+// The background() helper accepts an arbitrary function as a parameter.
+func (app *application) background(fn func()) {
+	// Increment the WaitGroup counter.
+	app.wg.Add(1)
+	go func() {
+		// Recover any panic.
+
+		defer app.wg.Done()
+
+		defer func() {
+			if err := recover(); err != nil {
+				app.logger.Error(fmt.Sprintf("%v", err))
+			}
+		}()
+
+		// Execute the arbitrary function that we passed as the parameter.
+		fn()
+	}()
+}

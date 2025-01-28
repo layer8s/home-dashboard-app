@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"log/slog"
+	"time"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
@@ -64,18 +65,29 @@ func (m Mailer) Send(recipient, templateFile string, data any) error {
 	plainTextContent := plainBody.String()
 	htmlContent := htmlBody.String()
 	message := mail.NewSingleEmail(from, subject.String(), to, plainTextContent, htmlContent)
-	response, err := m.client.Send(message)
-	if err != nil {
+
+	for i := 1; i <= 3; i++ {
+		response, err := m.client.Send(message)
+		if nil == err {
+			// If the email is sent successfully, break out of the loop.
+			m.logger.Info("email sent successfully",
+				"status", response.StatusCode,
+				"recipient", recipient,
+				"Body", response.Body,
+				"Headers", response.Headers)
+			return nil
+
+		}
+
 		m.logger.Error("failed to send email",
 			"error", err,
 			"recipient", recipient,
-			"template", templateFile)
-		return fmt.Errorf("error sending email: %w", err)
+			"template", templateFile,
+			"Sending attempt", i,
+			"Retrying in : ", 500*time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
+
 	}
-	m.logger.Info("email sent successfully",
-		"status", response.StatusCode,
-		"recipient", recipient,
-		"Body", response.Body,
-		"Headers", response.Headers)
-	return nil
+	return fmt.Errorf("error sending email: %w", err)
+
 }

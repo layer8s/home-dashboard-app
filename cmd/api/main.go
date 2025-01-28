@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/Robert-litts/fantasy-football-archive/internal/db"
@@ -51,6 +52,7 @@ type application struct {
 	queries      *db.Queries
 	sessionStore sessions.Store
 	mailer       *mailer.Mailer
+	wg           sync.WaitGroup
 }
 
 func main() {

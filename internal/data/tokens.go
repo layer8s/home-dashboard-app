@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/base32"
 	"time"
 
+	"github.com/Robert-litts/fantasy-football-archive/internal/db"
 	"github.com/Robert-litts/fantasy-football-archive/internal/validator"
 )
 
@@ -21,6 +21,16 @@ type Token struct {
 	UserID    int64
 	Expiry    time.Time
 	Scope     string
+}
+
+type TokenModel struct {
+	queries *db.Queries
+}
+
+func NewTokenService(queries *db.Queries) *TokenModel {
+	return &TokenModel{
+		queries: queries,
+	}
 }
 
 func generateToken(userID int64, ttl time.Duration, scope string) (*Token, error) {
@@ -64,47 +74,44 @@ func ValidateTokenPlaintext(v *validator.Validator, tokenPlaintext string) {
 	v.Check(len(tokenPlaintext) == 26, "token", "must be 26 bytes long")
 }
 
-// Define the TokenModel type.
-type TokenModel struct {
-	DB *sql.DB
-}
-
 // The New() method is a shortcut which creates a new Token struct and then inserts the
 // data in the tokens table.
-func (m TokenModel) New(userID int64, ttl time.Duration, scope string) (*Token, error) {
+func (m *TokenModel) New(ctx context.Context, userID int64, ttl time.Duration, scope string) (*Token, error) {
 	token, err := generateToken(userID, ttl, scope)
 	if err != nil {
 		return nil, err
 	}
 
-	err = m.Insert(token)
+	err = m.Insert(ctx, token)
+	if err != nil {
+		return nil, err
+	}
 	return token, err
 }
 
 // Insert() adds the data for a specific token to the tokens table.
-func (m TokenModel) Insert(token *Token) error {
-	query := `
-        INSERT INTO tokens (hash, user_id, expiry, scope) 
-        VALUES ($1, $2, $3, $4)`
+func (m TokenModel) Insert(ctx context.Context, token *Token) error {
+	params := db.InsertTokenParams{
+		Hash:   token.Hash,
+		UserID: token.UserID,
+		Expiry: token.Expiry,
+		Scope:  token.Scope,
+	}
 
-	args := []any{token.Hash, token.UserID, token.Expiry, token.Scope}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
-
-	_, err := m.DB.ExecContext(ctx, query, args...)
-	return err
+	err := m.queries.InsertToken(ctx, params)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // DeleteAllForUser() deletes all tokens for a specific user and scope.
-func (m TokenModel) DeleteAllForUser(scope string, userID int64) error {
-	query := `
-        DELETE FROM tokens 
-        WHERE scope = $1 AND user_id = $2`
+func (m TokenModel) DeleteAllForUser(ctx context.Context, scope string, userID int64) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
-	defer cancel()
+	params := db.DeleteTokenParams{
+		Scope:  scope,
+		UserID: userID,
+	}
 
-	_, err := m.DB.ExecContext(ctx, query, scope, userID)
-	return err
+	return m.queries.DeleteToken(ctx, params)
 }

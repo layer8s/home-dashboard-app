@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"net/http"
+	"time"
 
 	"github.com/Robert-litts/fantasy-football-archive/internal/data"
 	"github.com/Robert-litts/fantasy-football-archive/internal/db"
@@ -75,8 +76,23 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 	user.ID = userRow.ID
 	user.CreatedAt = userRow.CreatedAt
 
+	tokenService := data.NewTokenService(app.queries)
+
+	token, err := tokenService.New(r.Context(), user.ID, 3*24*time.Hour, data.ScopeActivation)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
 	app.background(func() {
-		err = app.mailer.Send(user.Email, "user_welcome.tmpl", user)
+
+		data := map[string]any{
+			"activationToken": token.Plaintext,
+			"userID":          user.ID,
+		}
+		app.logger.Info("User data info: ", data)
+
+		err = app.mailer.Send(user.Email, "user_welcome.tmpl", data)
 		if err != nil {
 			app.logger.Error((err.Error()))
 		}

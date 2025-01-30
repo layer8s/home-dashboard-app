@@ -86,31 +86,27 @@ func generateState() (string, error) {
 	return base64.URLEncoding.EncodeToString(b), nil
 }
 
-type AuthHandlers struct {
-	app *application
-}
-
-func (h *AuthHandlers) HandleAuth(w http.ResponseWriter, r *http.Request) {
+func (a *application) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	provider := strings.TrimPrefix(r.URL.Path, "/v1/auth/")
 	provider = strings.TrimSuffix(provider, "/")
 
-	h.app.authManager.mu.RLock()
-	p, exists := h.app.authManager.providers[provider]
-	h.app.authManager.mu.RUnlock()
+	a.authManager.mu.RLock()
+	p, exists := a.authManager.providers[provider]
+	a.authManager.mu.RUnlock()
 
 	if !exists {
-		h.app.notFoundResponse(w, r)
+		a.notFoundResponse(w, r)
 		return
 	}
 
 	state, err := generateState()
 	if err != nil {
-		h.app.serverErrorResponse(w, r, err)
+		a.serverErrorResponse(w, r, err)
 		return
 	}
 
 	// Store state in session
-	session, _ := h.app.sessionStore.Get(r, "auth-session")
+	session, _ := a.sessionStore.Get(r, "auth-session")
 	session.Values["state"] = state
 	session.Save(r, w)
 
@@ -118,61 +114,61 @@ func (h *AuthHandlers) HandleAuth(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
 }
 
-func (h *AuthHandlers) HandleCallback(w http.ResponseWriter, r *http.Request) {
+func (a *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	provider := strings.TrimPrefix(r.URL.Path, "/v1/auth/")
 	provider = strings.TrimSuffix(strings.TrimSuffix(provider, "/callback"), "/")
 
-	h.app.logger.Info("auth callback received",
+	a.logger.Info("auth callback received",
 		"provider", provider,
 		"state", r.URL.Query().Get("state"),
 		"code", r.URL.Query().Get("code") != "")
 
-	h.app.authManager.mu.RLock()
-	p, exists := h.app.authManager.providers[provider]
-	h.app.authManager.mu.RUnlock()
+	a.authManager.mu.RLock()
+	p, exists := a.authManager.providers[provider]
+	a.authManager.mu.RUnlock()
 
 	if !exists {
-		h.app.logger.Error("provider not found", "provider", provider)
-		h.app.notFoundResponse(w, r)
+		a.logger.Error("provider not found", "provider", provider)
+		a.notFoundResponse(w, r)
 		return
 	}
 
 	// Verify state
-	session, _ := h.app.sessionStore.Get(r, "auth-session")
+	session, _ := a.sessionStore.Get(r, "auth-session")
 	if r.URL.Query().Get("state") != session.Values["state"] {
-		h.app.invalidAuthenticationTokenResponse(w, r)
+		a.invalidAuthenticationTokenResponse(w, r)
 		return
 	}
 
 	// Exchange code for token
 	oauth2Token, err := p.Config.Exchange(r.Context(), r.URL.Query().Get("code"))
 	if err != nil {
-		h.app.logger.Error("token exchange failed",
+		a.logger.Error("token exchange failed",
 			"error", err,
 			"provider", provider,
 			"error_type", fmt.Sprintf("%T", err))
 
 		var oauthError *oauth2.RetrieveError
 		if errors.As(err, &oauthError) {
-			h.app.logger.Error("oauth2 retrieve error details",
+			a.logger.Error("oauth2 retrieve error details",
 				"status_code", oauthError.Response.StatusCode,
 				"body", string(oauthError.Body))
 		}
-		h.app.serverErrorResponse(w, r, err)
+		a.serverErrorResponse(w, r, err)
 		return
 	}
 
 	// Extract the ID Token
 	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
 	if !ok {
-		h.app.serverErrorResponse(w, r, errors.New("no id_token in token response"))
+		a.serverErrorResponse(w, r, errors.New("no id_token in token response"))
 		return
 	}
 
 	// Verify the ID Token
 	idToken, err := p.Verifier.Verify(r.Context(), rawIDToken)
 	if err != nil {
-		h.app.serverErrorResponse(w, r, err)
+		a.serverErrorResponse(w, r, err)
 		return
 	}
 
@@ -184,7 +180,7 @@ func (h *AuthHandlers) HandleCallback(w http.ResponseWriter, r *http.Request) {
 		Nickname string `json:"nickname"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
-		h.app.serverErrorResponse(w, r, err)
+		a.serverErrorResponse(w, r, err)
 		return
 	}
 
@@ -197,19 +193,19 @@ func (h *AuthHandlers) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 
 	// Return user info
-	err = h.app.writeJSON(w, http.StatusOK, envelope{"user": claims}, nil)
+	err = a.writeJSON(w, http.StatusOK, envelope{"user": claims}, nil)
 	if err != nil {
-		h.app.serverErrorResponse(w, r, err)
+		a.serverErrorResponse(w, r, err)
 	}
 }
 
-func (h *AuthHandlers) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	session, _ := h.app.sessionStore.Get(r, "auth-session")
+func (a *application) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	session, _ := a.sessionStore.Get(r, "auth-session")
 	session.Options.MaxAge = -1
 	session.Save(r, w)
 
-	err := h.app.writeJSON(w, http.StatusOK, envelope{"message": "Successfully logged out"}, nil)
+	err := a.writeJSON(w, http.StatusOK, envelope{"message": "Successfully logged out"}, nil)
 	if err != nil {
-		h.app.serverErrorResponse(w, r, err)
+		a.serverErrorResponse(w, r, err)
 	}
 }

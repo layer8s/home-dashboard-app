@@ -1,8 +1,34 @@
-<!-- templates/login.html -->
-<html>
-  <body>
-    <h1>Login Page</h1>
-    <a href="/v1/auth/auth0">Login with Auth0</a><br>
-    <a href="/v1/auth/github">Login with GitHub</a>
-  </body>
+{{/* templates/login.html */}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fantasy Football Archive</title>
+    <!-- Load HTMX from CDN -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media (prefers-color-scheme: dark) {
+            body {
+                background-color: #1a202c;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 h-screen flex flex-col items-center justify-center">
+    <!-- Image Banner -->
+    <img src="https://raw.githubusercontent.com/Robert-litts/fantasy-football-archive/refs/heads/main/league-does-exist.png" alt="Fantasy Football Banner" class="w-full h-[30vh] object-cover object-center mb-8">
+
+    <!-- Login Form Container -->
+    <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
+        <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">Welcome to Fantasy Football Archive</h1>
+        <p class="text-gray-600 dark:text-gray-300 mb-8">Please login to continue</p>
+        <a href="/v1/auth/auth0" 
+           class="inline-block bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600">
+            Login with Auth0
+        </a>
+    </div>
+</body>
 </html>
+

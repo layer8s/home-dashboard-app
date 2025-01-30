@@ -14,7 +14,6 @@ import (
 	"github.com/Robert-litts/fantasy-football-archive/internal/mailer"
 	"github.com/gorilla/sessions"
 	_ "github.com/lib/pq"
-	"github.com/markbates/goth/gothic"
 )
 
 const version = "1.0.0"
@@ -26,11 +25,12 @@ type AuthConfig struct {
 
 // ProviderConfig holds the configuration for a specific auth provider
 type ProviderConfig struct {
-	Name         string
-	ClientID     string
-	ClientSecret string
-	Scopes       []string
-	ExtraConfig  map[string]string
+	Name            string
+	ClientID        string
+	ClientSecret    string
+	Scopes          []string
+	BaseCallbackURL string
+	ExtraConfig     map[string]string
 }
 
 type config struct {
@@ -42,7 +42,10 @@ type config struct {
 		maxIdleConns int
 		maxIdleTime  time.Duration
 	}
-	auth       AuthConfig
+	auth struct {
+		baseCallbackURL string
+		providers       map[string]ProviderConfig
+	}
 	sessionKey string
 }
 
@@ -53,6 +56,7 @@ type application struct {
 	sessionStore sessions.Store
 	mailer       *mailer.Mailer
 	wg           sync.WaitGroup
+	authManager  *AuthManager
 }
 
 func main() {
@@ -70,24 +74,17 @@ func main() {
 	flag.DurationVar(&cfg.db.maxIdleTime, "db-max-idle-time", dbMaxIdleTime, "PostgreSQL max connection idle time")
 	flag.Parse()
 
-	cfg.auth = AuthConfig{
-		BaseCallbackURL: fmt.Sprintf("http://localhost:%d", port),
-		Providers: map[string]ProviderConfig{
-			"auth0": {
-				Name:         "auth0",
-				ClientID:     os.Getenv("AUTH0_KEY"),
-				ClientSecret: os.Getenv("AUTH0_SECRET"),
-				ExtraConfig: map[string]string{
-					"domain": os.Getenv("AUTH0_DOMAIN"),
-				},
+	cfg.auth.baseCallbackURL = fmt.Sprintf("http://localhost:%d", port)
+	cfg.auth.providers = map[string]ProviderConfig{
+		"auth0": {
+			Name:            "auth0",
+			ClientID:        os.Getenv("AUTH0_CLIENT_ID"),
+			ClientSecret:    os.Getenv("AUTH0_CLIENT_SECRET"),
+			Scopes:          []string{"openid", "profile", "email"},
+			BaseCallbackURL: cfg.auth.baseCallbackURL,
+			ExtraConfig: map[string]string{
+				"issuer": fmt.Sprintf("https://%s/", os.Getenv("AUTH0_DOMAIN")),
 			},
-			"github": {
-				Name:         "github",
-				ClientID:     os.Getenv("GITHUB_KEY"),
-				ClientSecret: os.Getenv("GITHUB_SECRET"),
-				Scopes:       []string{"user:email", "read:user"},
-			},
-			// Add more providers as needed
 		},
 	}
 
@@ -113,14 +110,17 @@ func main() {
 		queries:      queries,
 		sessionStore: sessions.NewCookieStore([]byte(cfg.sessionKey)),
 		mailer:       mailer.New(sendGridKey, "FFArchive <robert@litts.org>", logger),
+		authManager:  NewAuthManager(),
 	}
 
 	// Initialize the auth providers
-	if err := app.InitProviders(); err != nil {
-		logger.Error("failed to initialize auth providers", "error", err)
-		os.Exit(1)
+	ctx := context.Background()
+	for _, providerConfig := range cfg.auth.providers {
+		if err := app.authManager.RegisterProvider(ctx, providerConfig); err != nil {
+			logger.Error("failed to register provider", "error", err, "provider", providerConfig.Name)
+			os.Exit(1)
+		}
 	}
-	gothic.Store = app.sessionStore
 
 	// Call app.serve() to start the server.
 	err = app.serve()

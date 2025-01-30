@@ -2,179 +2,214 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"errors"
 	"fmt"
 	"net/http"
+	"strings"
+	"sync"
 
-	"github.com/markbates/goth"
-	"github.com/markbates/goth/gothic"
-	"github.com/markbates/goth/providers/auth0"
-	"github.com/markbates/goth/providers/github"
-	"github.com/markbates/goth/providers/google"
+	"github.com/coreos/go-oidc/v3/oidc"
+	"golang.org/x/oauth2"
 )
 
-func (app *application) authCallbackHandler(w http.ResponseWriter, r *http.Request) {
-	provider, err := app.readProviderParam(r)
-	if err != nil {
-		app.notFoundResponse(w, r)
-		return
-	}
-	app.logger.Info("processing auth callback", "provider", provider)
+type OIDCProvider struct {
+	Provider     *oidc.Provider
+	Config       oauth2.Config
+	Verifier     *oidc.IDTokenVerifier
+	Name         string
+	ClientID     string
+	ClientSecret string
+	Issuer       string
+}
 
-	// Set the provider in the context
-	r = app.setProviderContext(r, provider)
+type AuthManager struct {
+	providers map[string]*OIDCProvider
+	mu        sync.RWMutex
+}
 
-	user, err := gothic.CompleteUserAuth(w, r)
-	if err != nil {
-		app.logger.Error("auth completion failed", "error", err, "provider", provider)
-		app.serverErrorResponse(w, r, err)
-		return
-	}
-
-	// Create a session
-	session, _ := app.sessionStore.Get(r, "auth-session")
-	session.Values["user_id"] = user.UserID
-	session.Values["provider"] = provider
-	session.Values["authenticated"] = true
-	err = session.Save(r, w)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
-	err = app.writeJSON(w, http.StatusOK, envelope{"user": user}, nil)
-
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
+func NewAuthManager() *AuthManager {
+	return &AuthManager{
+		providers: make(map[string]*OIDCProvider),
+		mu:        sync.RWMutex{},
 	}
 }
 
-func (app *application) authProviderHandler(w http.ResponseWriter, r *http.Request) {
-	provider, err := app.readProviderParam(r)
+func (am *AuthManager) RegisterProvider(ctx context.Context, config ProviderConfig) error {
+
+	if am == nil {
+		return fmt.Errorf("AuthManager is nil")
+	}
+	if am.providers == nil {
+		am.providers = make(map[string]*OIDCProvider)
+	}
+	am.mu.Lock()
+	defer am.mu.Unlock()
+
+	provider, err := oidc.NewProvider(ctx, config.ExtraConfig["issuer"])
 	if err != nil {
-		app.notFoundResponse(w, r)
-		return
+		return fmt.Errorf("failed to initialize provider: %w", err)
 	}
 
-	if !app.IsProviderEnabled(provider) {
-		app.notFoundResponse(w, r)
-		return
+	oidcConfig := &oidc.Config{
+		ClientID: config.ClientID,
 	}
 
-	// Check if there's an active session
-	session, _ := app.sessionStore.Get(r, "auth-session")
-	if auth, ok := session.Values["authenticated"].(bool); ok && auth {
-		userID := session.Values["user_id"]
-		app.logger.Info("user already authenticated", "provider", provider, "user_id", userID)
-		err = app.writeJSON(w, http.StatusOK, envelope{"message": "Already authenticated", "user_id": userID}, nil)
-		if err != nil {
-			app.serverErrorResponse(w, r, err)
-		}
-		return
+	// Configure the OAuth2 config
+	oauth2Config := oauth2.Config{
+		ClientID:     config.ClientID,
+		ClientSecret: config.ClientSecret,
+		RedirectURL:  fmt.Sprintf("%s/v1/auth/%s/callback", config.BaseCallbackURL, config.Name),
+		Endpoint:     provider.Endpoint(),
+		Scopes:       append([]string{oidc.ScopeOpenID, "profile", "email"}, config.Scopes...),
 	}
 
-	r = app.setProviderContext(r, provider)
-	// Begin the auth process
-	gothic.BeginAuthHandler(w, r)
-}
-
-func (app *application) authLogoutHandler(w http.ResponseWriter, r *http.Request) {
-	provider, err := app.readProviderParam(r)
-	if err != nil {
-		app.notFoundResponse(w, r)
-		return
+	am.providers[config.Name] = &OIDCProvider{
+		Provider:     provider,
+		Config:       oauth2Config,
+		Verifier:     provider.Verifier(oidcConfig),
+		Name:         config.Name,
+		ClientID:     config.ClientID,
+		ClientSecret: config.ClientSecret,
+		Issuer:       config.ExtraConfig["issuer"],
 	}
 
-	app.logger.Info("processing logout", "provider", provider)
-	// Clear the session
-	session, _ := app.sessionStore.Get(r, "auth-session")
-	session.Values = map[interface{}]interface{}{}
-	session.Options.MaxAge = -1
-	err = session.Save(r, w)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
-
-	// Set the provider in the context
-	r = app.setProviderContext(r, provider)
-
-	gothic.Logout(w, r)
-
-	// Send JSON response instead of redirect
-	err = app.writeJSON(w, http.StatusOK, envelope{"message": "Successfully logged out"}, nil)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-	}
-}
-
-// Uses context to pass provider information through the request context for gothic middleware
-func (app *application) setProviderContext(r *http.Request, provider string) *http.Request {
-	return r.WithContext(context.WithValue(r.Context(), gothic.ProviderParamKey, provider))
-}
-
-// InitProviders initializes all configured auth providers
-func (app *application) InitProviders() error {
-	providers := []goth.Provider{}
-
-	for providerName, providerConfig := range app.config.auth.Providers {
-		provider, err := app.createProvider(providerName, providerConfig)
-		if err != nil {
-			return fmt.Errorf("failed to create provider %s: %w", providerName, err)
-		}
-		if provider != nil {
-			providers = append(providers, provider)
-		}
-	}
-
-	goth.UseProviders(providers...)
 	return nil
 }
 
-// createProvider creates a specific provider based on configuration
-func (app *application) createProvider(name string, config ProviderConfig) (goth.Provider, error) {
-	callbackURL := fmt.Sprintf("%s/v1/auth/%s/callback", app.config.auth.BaseCallbackURL, name)
+func generateState() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.URLEncoding.EncodeToString(b), nil
+}
 
-	switch name {
-	case "auth0":
-		domain, exists := config.ExtraConfig["domain"]
-		if !exists {
-			return nil, fmt.Errorf("auth0 domain not configured")
+type AuthHandlers struct {
+	app *application
+}
+
+func (h *AuthHandlers) HandleAuth(w http.ResponseWriter, r *http.Request) {
+	provider := strings.TrimPrefix(r.URL.Path, "/v1/auth/")
+	provider = strings.TrimSuffix(provider, "/")
+
+	h.app.authManager.mu.RLock()
+	p, exists := h.app.authManager.providers[provider]
+	h.app.authManager.mu.RUnlock()
+
+	if !exists {
+		h.app.notFoundResponse(w, r)
+		return
+	}
+
+	state, err := generateState()
+	if err != nil {
+		h.app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Store state in session
+	session, _ := h.app.sessionStore.Get(r, "auth-session")
+	session.Values["state"] = state
+	session.Save(r, w)
+
+	authURL := p.Config.AuthCodeURL(state)
+	http.Redirect(w, r, authURL, http.StatusTemporaryRedirect)
+}
+
+func (h *AuthHandlers) HandleCallback(w http.ResponseWriter, r *http.Request) {
+	provider := strings.TrimPrefix(r.URL.Path, "/v1/auth/")
+	provider = strings.TrimSuffix(strings.TrimSuffix(provider, "/callback"), "/")
+
+	h.app.logger.Info("auth callback received",
+		"provider", provider,
+		"state", r.URL.Query().Get("state"),
+		"code", r.URL.Query().Get("code") != "")
+
+	h.app.authManager.mu.RLock()
+	p, exists := h.app.authManager.providers[provider]
+	h.app.authManager.mu.RUnlock()
+
+	if !exists {
+		h.app.logger.Error("provider not found", "provider", provider)
+		h.app.notFoundResponse(w, r)
+		return
+	}
+
+	// Verify state
+	session, _ := h.app.sessionStore.Get(r, "auth-session")
+	if r.URL.Query().Get("state") != session.Values["state"] {
+		h.app.invalidAuthenticationTokenResponse(w, r)
+		return
+	}
+
+	// Exchange code for token
+	oauth2Token, err := p.Config.Exchange(r.Context(), r.URL.Query().Get("code"))
+	if err != nil {
+		h.app.logger.Error("token exchange failed",
+			"error", err,
+			"provider", provider,
+			"error_type", fmt.Sprintf("%T", err))
+
+		var oauthError *oauth2.RetrieveError
+		if errors.As(err, &oauthError) {
+			h.app.logger.Error("oauth2 retrieve error details",
+				"status_code", oauthError.Response.StatusCode,
+				"body", string(oauthError.Body))
 		}
-		return auth0.New(
-			config.ClientID,
-			config.ClientSecret,
-			callbackURL,
-			domain,
-		), nil
+		h.app.serverErrorResponse(w, r, err)
+		return
+	}
 
-	case "github":
-		return github.New(
-			config.ClientID,
-			config.ClientSecret,
-			callbackURL,
-			config.Scopes...,
-		), nil
+	// Extract the ID Token
+	rawIDToken, ok := oauth2Token.Extra("id_token").(string)
+	if !ok {
+		h.app.serverErrorResponse(w, r, errors.New("no id_token in token response"))
+		return
+	}
 
-	case "google":
-		return google.New(
-			config.ClientID,
-			config.ClientSecret,
-			callbackURL,
-			config.Scopes...,
-		), nil
+	// Verify the ID Token
+	idToken, err := p.Verifier.Verify(r.Context(), rawIDToken)
+	if err != nil {
+		h.app.serverErrorResponse(w, r, err)
+		return
+	}
 
-	default:
-		return nil, fmt.Errorf("unsupported provider: %s", name)
+	// Get user info
+	var claims struct {
+		Email    string `json:"email"`
+		Sub      string `json:"sub"`
+		Name     string `json:"name"`
+		Nickname string `json:"nickname"`
+	}
+	if err := idToken.Claims(&claims); err != nil {
+		h.app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	// Store user info in session
+	session.Values["user_id"] = claims.Sub
+	session.Values["email"] = claims.Email
+	session.Values["name"] = claims.Name
+	session.Values["provider"] = provider
+	session.Values["authenticated"] = true
+	session.Save(r, w)
+
+	// Return user info
+	err = h.app.writeJSON(w, http.StatusOK, envelope{"user": claims}, nil)
+	if err != nil {
+		h.app.serverErrorResponse(w, r, err)
 	}
 }
 
-// IsProviderEnabled checks if a specific provider is enabled
-func (app *application) IsProviderEnabled(name string) bool {
-	_, exists := app.config.auth.Providers[name]
-	return exists
-}
+func (h *AuthHandlers) HandleLogout(w http.ResponseWriter, r *http.Request) {
+	session, _ := h.app.sessionStore.Get(r, "auth-session")
+	session.Options.MaxAge = -1
+	session.Save(r, w)
 
-// GetProviderConfig gets the configuration for a specific provider
-func (app *application) GetProviderConfig(name string) (ProviderConfig, bool) {
-	config, exists := app.config.auth.Providers[name]
-	return config, exists
+	err := h.app.writeJSON(w, http.StatusOK, envelope{"message": "Successfully logged out"}, nil)
+	if err != nil {
+		h.app.serverErrorResponse(w, r, err)
+	}
 }

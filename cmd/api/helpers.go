@@ -200,3 +200,8 @@ func (app *application) background(fn func()) {
 		fn()
 	}()
 }
+
+func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request) {
+	message := "invalid or missing authentication token"
+	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}

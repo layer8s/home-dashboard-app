@@ -193,10 +193,12 @@ func (a *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	session.Save(r, w)
 
 	// Return user info
-	err = a.writeJSON(w, http.StatusOK, envelope{"user": claims}, nil)
-	if err != nil {
-		a.serverErrorResponse(w, r, err)
-	}
+	// err = a.writeJSON(w, http.StatusOK, envelope{"user": claims}, nil)
+	// if err != nil {
+	// 	a.serverErrorResponse(w, r, err)
+	// }
+
+	http.Redirect(w, r, "/v1/dashboard", http.StatusSeeOther)
 }
 
 func (a *application) HandleLogout(w http.ResponseWriter, r *http.Request) {

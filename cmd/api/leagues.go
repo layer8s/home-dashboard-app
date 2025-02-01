@@ -111,3 +111,80 @@ func (app *application) listLeaguesHandler(w http.ResponseWriter, r *http.Reques
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+// leaguesPageHandler renders the leagues page for authenticated users
+func (app *application) leaguesPageHandler(w http.ResponseWriter, r *http.Request) {
+	// Get user session data
+	session, _ := app.sessionStore.Get(r, "auth-session")
+
+	// Set up the query parameters for getting leagues
+	baseParams := db.GetLeaguesAscParams{
+		Limit:       100,
+		Offset:      0,
+		Column9:     "id",
+		ID:          -1,
+		LeagueId:    -1,
+		Year:        -1,
+		TeamCount:   -1,
+		CurrentWeek: -1,
+		NflWeek:     -1,
+	}
+	// Get leagues from database
+	leagues, err := app.queries.GetLeaguesAsc(r.Context(), baseParams)
+	if err != nil {
+		app.logger.Error("database error", "error", err)
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	app.logger.Info("Leagues fetched:", leagues)
+
+	// Prepare template data
+	data := map[string]interface{}{
+		"Email":    session.Values["email"],
+		"Name":     session.Values["name"],
+		"Provider": session.Values["provider"],
+		"Leagues":  leagues,
+	}
+
+	// Render the template
+	err = app.renderTemplate(w, "leagues.tmpl", data)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}
+
+// leaguesRefreshHandler handles HTMX requests to refresh the leagues table
+func (app *application) leaguesRefreshHandler(w http.ResponseWriter, r *http.Request) {
+	baseParams := db.GetLeaguesAscParams{
+		Limit:       100,
+		Offset:      0,
+		Column9:     "id",
+		ID:          -1,
+		LeagueId:    -1,
+		Year:        -1,
+		TeamCount:   -1,
+		CurrentWeek: -1,
+		NflWeek:     -1,
+	}
+
+	leagues, err := app.queries.GetLeaguesAsc(r.Context(), baseParams)
+	if err != nil {
+		app.logger.Error("database error", "error", err)
+		if err == sql.ErrNoRows {
+			app.notFoundResponse(w, r)
+			return
+		}
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	data := map[string]interface{}{
+		"Leagues": leagues,
+	}
+
+	err = app.renderTemplate(w, "leagues-partial.tmpl", data)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+	}
+}

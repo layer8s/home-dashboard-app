@@ -20,6 +20,20 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/auth/:provider/logout", app.HandleLogout)
 	router.HandlerFunc(http.MethodGet, "/v1/auth/:provider", app.HandleAuth)
 
+	// route with authentication middleware
+	router.HandlerFunc(http.MethodGet, "/v1/dashboard",
+		app.requireAuthenticated(app.dashboardHandler))
+
+	// route for HTMX to refresh user info
+	router.HandlerFunc(http.MethodGet, "/v1/dashboard/refresh",
+		app.requireAuthenticated(app.dashboardHandler))
+
+	router.HandlerFunc(http.MethodGet, "/v1/dashboard/leagues",
+		app.requireAuthenticated(app.leaguesPageHandler))
+
+	router.HandlerFunc(http.MethodGet, "/v1/dashboard/leagues/refresh",
+		app.requireAuthenticated(app.leaguesRefreshHandler))
+
 	router.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
 
 	return app.recoverPanic(router)

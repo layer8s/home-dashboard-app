@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -204,4 +206,59 @@ func (app *application) background(fn func()) {
 func (app *application) invalidAuthenticationTokenResponse(w http.ResponseWriter, r *http.Request) {
 	message := "invalid or missing authentication token"
 	app.errorResponse(w, r, http.StatusUnauthorized, message)
+}
+
+func (app *application) renderTemplate(w http.ResponseWriter, name string, data interface{}) error {
+	templates := make(map[string]*template.Template)
+
+	// Define the paths for different template types
+	templatePaths := []string{
+		filepath.Join("ui", "html", "base.tmpl"),
+		filepath.Join("ui", "html", name),
+	}
+
+	// If we're rendering the dashboard or leagues, we also need their respective partial templates
+	switch name {
+	case "dashboard.tmpl", "dashboard-partial.tmpl":
+		templatePaths = append(templatePaths, filepath.Join("ui", "html", "dashboard-partial.tmpl"))
+	case "leagues.tmpl", "leagues-partial.tmpl":
+		templatePaths = append(templatePaths, filepath.Join("ui", "html", "leagues-partial.tmpl"))
+	}
+
+	// Log the templates we're attempting to parse
+	app.logger.Info("parsing templates",
+		"paths", templatePaths)
+
+	// Parse all required templates
+	tmpl, err := template.ParseFiles(templatePaths...)
+	if err != nil {
+		// Log the error with detailed information
+		app.logger.Error("template parsing failed",
+			"error", err,
+			"paths", templatePaths)
+		return fmt.Errorf("error parsing template files: %w", err)
+	}
+
+	// Store the template in our cache
+	templates[name] = tmpl
+
+	// Execute the appropriate template based on the type
+	switch name {
+	case "dashboard-partial.tmpl":
+		err = tmpl.ExecuteTemplate(w, "user-info", data)
+	case "leagues-partial.tmpl":
+		err = tmpl.ExecuteTemplate(w, "leagues-table", data)
+	default:
+		// For full pages, we execute the base template
+		err = tmpl.ExecuteTemplate(w, "base", data)
+	}
+
+	if err != nil {
+		app.logger.Error("template execution failed",
+			"error", err,
+			"template", name)
+		return fmt.Errorf("error executing template: %w", err)
+	}
+
+	return nil
 }

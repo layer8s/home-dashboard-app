@@ -1,0 +1,9 @@
+{{define "content"}}
+<div class="dashboard">
+ <h1>Welcome to Your Dashboard</h1>
+ <div id="user-info" hx-get="/v1/dashboard/refresh" hx-trigger="every 30s">
+ {{template "user-info" .}}
+ </div>
+ <a href="/v1/auth/{{.Provider}}/logout">Logout</a>
+</div>
+{{end}}

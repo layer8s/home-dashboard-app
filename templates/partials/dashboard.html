@@ -1,0 +1,23 @@
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Fantasy Football Archive - Dashboard</title>
+    <script src="https://unpkg.com/htmx.org@1.9.6"></script>
+    <!-- You might want to add your existing styles here -->
+</head>
+<body>
+    <div class="dashboard">
+        <h1>Welcome to Your Dashboard</h1>
+        <!-- This div will be automatically updated by HTMX every 30 seconds -->
+        <div id="user-info" 
+             hx-get="/v1/dashboard/refresh" 
+             hx-trigger="every 30s">
+            <!-- Initial user info will be rendered here -->
+            {{template "partials/user_info.html" .}}
+        </div>
+        <a href="/v1/auth/{{.Provider}}/logout">Logout</a>
+    </div>
+</body>
+</html>

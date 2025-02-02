@@ -1,25 +1,15 @@
 package main
 
 import (
-	"html/template"
-	"log"
 	"net/http"
+
+	"github.com/Robert-litts/fantasy-football-archive/templates"
 )
 
-var tmpl *template.Template
-
-func init() {
-	var err error
-	tmpl, err = template.ParseGlob("templates/*.html")
-	if err != nil {
-		log.Fatal("Failed to parse templates")
-	}
-}
-
 func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {
-	err := tmpl.ExecuteTemplate(w, "login.html", nil)
+	loginPage := templates.Login()
+	err := loginPage.Render(r.Context(), w)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
-		return
 	}
 }

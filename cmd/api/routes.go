@@ -32,9 +32,11 @@ func (app *application) routes() http.Handler {
 		app.requireAuthenticated(app.leaguesPageHandler))
 
 	router.HandlerFunc(http.MethodGet, "/v1/dashboard/leagues/refresh",
-		app.requireAuthenticated(app.leaguesRefreshHandler))
+		app.requireAuthenticated(app.leaguesPageHandler))
 
 	router.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
+
+	router.HandlerFunc(http.MethodGet, "/login", app.loginTemplHandler)
 
 	return app.recoverPanic(router)
 }

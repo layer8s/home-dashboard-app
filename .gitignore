@@ -1,3 +1,6 @@
+#Templ
+*_templ.go
+
 # Go binary files
 /bin/
 /obj/

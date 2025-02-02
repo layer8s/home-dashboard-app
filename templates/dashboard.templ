@@ -1,0 +1,29 @@
+package templates
+
+import "fmt"
+
+templ Dashboard(name *string, email *string, provider *string) {
+    <div class="dashboard p-6">
+        <h1 class="text-2xl font-bold">Welcome to Your Dashboard</h1>
+        <div 
+            id="user-info"
+            hx-get="/v1/dashboard/refresh"
+            hx-trigger="every 30s"
+            class="mt-4 p-4 bg-gray-800 rounded-lg"
+        >
+            @UserInfo(name, email, provider)
+        </div>
+        <a 
+            href={ templ.SafeURL(fmt.Sprintf("/v1/auth/%s/logout", *provider)) }
+            class="mt-6 inline-block bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+        >
+            Logout
+        </a>
+    </div>
+    <button hx-get="/v1/dashboard/leagues"
+    hx-trigger="click"
+    hx-target="#user-info"
+    hx-swap="outerHTML">
+    View Leagues!
+</button>
+}

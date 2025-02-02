@@ -7,6 +7,7 @@ import (
 	"github.com/Robert-litts/fantasy-football-archive/internal/data"
 	"github.com/Robert-litts/fantasy-football-archive/internal/db"
 	"github.com/Robert-litts/fantasy-football-archive/internal/validator"
+	"github.com/Robert-litts/fantasy-football-archive/templates"
 )
 
 func (app *application) showLeagueHandler(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +116,7 @@ func (app *application) listLeaguesHandler(w http.ResponseWriter, r *http.Reques
 // leaguesPageHandler renders the leagues page for authenticated users
 func (app *application) leaguesPageHandler(w http.ResponseWriter, r *http.Request) {
 	// Get user session data
-	session, _ := app.sessionStore.Get(r, "auth-session")
+	// session, _ := app.sessionStore.Get(r, "auth-session")
 
 	// Set up the query parameters for getting leagues
 	baseParams := db.GetLeaguesAscParams{
@@ -137,18 +138,35 @@ func (app *application) leaguesPageHandler(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	app.logger.Info("Leagues fetched:", leagues)
+	//app.logger.Info("Leagues fetched:", leagues)
 
-	// Prepare template data
-	data := map[string]interface{}{
-		"Email":    session.Values["email"],
-		"Name":     session.Values["name"],
-		"Provider": session.Values["provider"],
-		"Leagues":  leagues,
+	// // Prepare template data
+	// data := map[string]interface{}{
+	// 	"Email":    session.Values["email"],
+	// 	"Name":     session.Values["name"],
+	// 	"Provider": session.Values["provider"],
+	// 	"Leagues":  leagues,
+	// }
+
+	// // Render the template
+	// err = app.renderTemplate(w, "leagues.tmpl", data)
+	// if err != nil {
+	// 	app.serverErrorResponse(w, r, err)
+	// }
+
+	// If it's an HTMX request, return just the table
+	if r.Header.Get("HX-Request") == "true" {
+		err := templates.LeaguesTable(leagues).Render(r.Context(), w)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+		}
+		return
 	}
 
-	// Render the template
-	err = app.renderTemplate(w, "leagues.tmpl", data)
+	// Render the full page inside the base layout
+	err = templates.Base(
+		templates.Leagues(leagues),
+	).Render(r.Context(), w)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}

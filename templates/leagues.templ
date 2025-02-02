@@ -1,0 +1,50 @@
+package templates
+
+import(
+    "github.com/Robert-litts/fantasy-football-archive/internal/db"
+    "strconv"
+)
+
+templ Leagues(leagues []db.League) {
+    <div class="min-h-screen px-4 py-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="leagues-dashboard">
+                <h1 class="text-3xl font-bold mb-6">Fantasy Football Leagues</h1>
+                <div class="overflow-x-auto rounded-lg shadow">
+                    <div 
+                        id="leagues-list" 
+                        hx-get="/v1/dashboard/leagues/refresh" 
+                        hx-trigger="load, every 30s"
+                    >
+                        @LeaguesTable(leagues)
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+templ LeaguesTable(leagues []db.League) {
+    <table class="min-w-full divide-y divide-gray-700 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+        <thead>
+            <tr>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider border-b border-gray-700">League ID</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider border-b border-gray-700">Year</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider border-b border-gray-700">Team Count</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider border-b border-gray-700">Current Week</th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider border-b border-gray-700">NFL Week</th>
+            </tr>
+        </thead>
+        <tbody class="bg-gray-900 divide-y divide-gray-700">
+            for _, league := range leagues {
+                <tr class="hover:bg-gray-800 transition-colors">
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300 border-x border-gray-700">{ strconv.Itoa(int(league.LeagueId)) }</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300 border-x border-gray-700">{ strconv.Itoa(int(league.Year)) }</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300 border-x border-gray-700">{ strconv.Itoa(int(league.TeamCount)) }</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300 border-x border-gray-700">{ strconv.Itoa(int(league.CurrentWeek)) }</td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-300 border-x border-gray-700">{ strconv.Itoa(int(league.NflWeek)) }</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

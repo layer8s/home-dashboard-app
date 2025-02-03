@@ -206,3 +206,8 @@ func (app *application) leaguesRefreshHandler(w http.ResponseWriter, r *http.Req
 		app.serverErrorResponse(w, r, err)
 	}
 }
+
+func (app *application) leaguesIndexHandler(w http.ResponseWriter, r *http.Request) {
+	component := templates.LeaguesPage()
+	component.Render(r.Context(), w)
+}

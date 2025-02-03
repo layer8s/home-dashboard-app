@@ -1,0 +1,97 @@
+package templates
+
+templ Index() {
+    <!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="UTF-8"/>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+            <title>Fantasy Football History</title>
+            <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+            <script src="https://cdn.tailwindcss.com"></script>
+        </head>
+        <body class="flex flex-col min-h-screen">
+            @Header()
+            @Navigation()
+            <main class="flex-grow container mx-auto px-4 py-8">
+                { children... }
+            </main>
+            @Footer()
+        </body>
+    </html>
+}
+
+templ Header() {
+    <header class="bg-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-4">
+            <h1 class="text-2xl font-bold">Fantasy Football History</h1>
+        </div>
+    </header>
+}
+
+templ Navigation() {
+    <nav class="bg-gray-100 shadow">
+        <div class="container mx-auto px-4">
+            <ul class="flex space-x-6 py-3">
+                <li>
+                    <a 
+                        hx-get="/v1/dashboard/leagues"
+                        hx-target="main"
+                        class="hover:text-blue-600 cursor-pointer"
+                    >
+                        Leagues
+                    </a>
+                </li>
+                <li>
+                    <a 
+                        hx-get="/teams"
+                        hx-target="main"
+                        class="hover:text-blue-600 cursor-pointer"
+                    >
+                        Teams
+                    </a>
+                </li>
+                <li>
+                    <a 
+                        hx-get="/matchups"
+                        hx-target="main"
+                        class="hover:text-blue-600 cursor-pointer"
+                    >
+                        Matchups
+                    </a>
+                </li>
+                <li>
+                    <a 
+                        hx-get="/drafts"
+                        hx-target="main"
+                        class="hover:text-blue-600 cursor-pointer"
+                    >
+                        Drafts
+                    </a>
+                </li>
+                <li>
+                    <a 
+                        hx-get="/standings"
+                        hx-target="main"
+                        class="hover:text-blue-600 cursor-pointer"
+                    >
+                        Standings
+                    </a>
+                </li>
+                <li style="float:right">
+                    <a 
+                        class="active" href="#about">Hello!
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+}
+
+templ Footer() {
+    <footer class="bg-gray-800 text-white mt-auto">
+        <div class="container mx-auto px-4 py-4 text-center">
+            <p>© 2025 Fantasy Football History</p>
+        </div>
+    </footer>
+}

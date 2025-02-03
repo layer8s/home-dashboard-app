@@ -34,6 +34,9 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/dashboard/leagues/refresh",
 		app.requireAuthenticated(app.leaguesPageHandler))
 
+	router.HandlerFunc(http.MethodGet, "/v1/dashboard/index",
+		app.requireAuthenticated(app.leaguesIndexHandler))
+
 	router.HandlerFunc(http.MethodPost, "/v1/users", app.registerUserHandler)
 
 	router.HandlerFunc(http.MethodGet, "/login", app.loginTemplHandler)

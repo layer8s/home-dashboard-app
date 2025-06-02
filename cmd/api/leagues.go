@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	"net/http"
 
-	"github.com/Robert-litts/fantasy-football-archive/internal/data"
-	"github.com/Robert-litts/fantasy-football-archive/internal/db"
-	"github.com/Robert-litts/fantasy-football-archive/internal/validator"
-	"github.com/Robert-litts/fantasy-football-archive/templates"
+	"github.com/layer8s/home-dashboard-app/internal/data"
+	"github.com/layer8s/home-dashboard-app/internal/db"
+	"github.com/layer8s/home-dashboard-app/internal/validator"
+	"github.com/layer8s/home-dashboard-app/templates"
 )
 
 func (app *application) showLeagueHandler(w http.ResponseWriter, r *http.Request) {

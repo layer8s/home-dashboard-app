@@ -1,4 +1,4 @@
-module github.com/Robert-litts/fantasy-football-archive
+module github.com/layer8s/home-dashboard-app.git
 
 go 1.23.3
 

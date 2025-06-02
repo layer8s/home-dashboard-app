@@ -3,7 +3,7 @@ package data
 import (
 	"strings"
 
-	"github.com/Robert-litts/fantasy-football-archive/internal/validator"
+	"github.com/layer8s/home-dashboard-app/internal/validator"
 )
 
 type Filters struct {

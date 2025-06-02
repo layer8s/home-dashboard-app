@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/Robert-litts/fantasy-football-archive/templates"
+	"github.com/layer8s/home-dashboard-app/templates"
 )
 
 func (app *application) loginHandler(w http.ResponseWriter, r *http.Request) {

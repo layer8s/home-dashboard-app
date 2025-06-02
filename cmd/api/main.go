@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Robert-litts/fantasy-football-archive/internal/db"
-	"github.com/Robert-litts/fantasy-football-archive/internal/mailer"
 	"github.com/gorilla/sessions"
+	"github.com/layer8s/home-dashboard-app/internal/db"
+	"github.com/layer8s/home-dashboard-app/internal/mailer"
 	_ "github.com/lib/pq"
 )
 

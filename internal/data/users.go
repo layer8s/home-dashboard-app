@@ -4,8 +4,8 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/Robert-litts/fantasy-football-archive/internal/validator"
 	"github.com/alexedwards/argon2id"
+	"github.com/layer8s/home-dashboard-app/internal/validator"
 )
 
 type User struct {

@@ -1,4 +1,4 @@
-module github.com/layer8s/home-dashboard-app.git
+module github.com/layer8s/home-dashboard-app
 
 go 1.23.3
 

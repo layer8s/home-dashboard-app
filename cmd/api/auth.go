@@ -192,7 +192,7 @@ func (a *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	session.Values["authenticated"] = true
 	session.Save(r, w)
 
-	// Return user info
+	//Return user info
 	// err = a.writeJSON(w, http.StatusOK, envelope{"user": claims}, nil)
 	// if err != nil {
 	// 	a.serverErrorResponse(w, r, err)

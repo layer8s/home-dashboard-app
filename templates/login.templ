@@ -1,13 +1,14 @@
 package templates
+
 templ Login() {
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Fantasy Football Archive</title>
+        <title>Home Dashboard</title>
 
-        <!-- Load HTMX & Tailwind -->
+        <!-- HTMX & Tailwind CSS -->
         <script src="https://unpkg.com/htmx.org@1.9.10"></script>
         <script src="https://cdn.tailwindcss.com"></script>
 
@@ -19,23 +20,35 @@ templ Login() {
             }
         </style>
     </head>
-    <body class="bg-gray-100 dark:bg-gray-900 h-screen flex flex-col items-center justify-center">
-        
+    <body class="bg-gray-100 dark:bg-gray-900 h-screen flex flex-col items-center justify-center px-4">
+
         <!-- Image Banner -->
-        <img src="https://raw.githubusercontent.com/Robert-litts/fantasy-football-archive/refs/heads/main/league-does-exist.png" 
-            alt="Fantasy Football Banner" 
-            class="w-full h-[30vh] object-cover object-center mb-8">
+        <img 
+            src="https://github.com/Robert-litts/home-dashboard/blob/main/MM_calendar_time_weather_notes_sports.png?raw=true" 
+            alt="Home Dashboard Banner" 
+            class="w-full max-w-2xl rounded-lg shadow mb-8 border dark:border-gray-700"
+        />
 
         <!-- Login Form Container -->
-        <div class="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
-            <h1 class="text-3xl font-bold text-gray-800 dark:text-white mb-6">Welcome to Fantasy Football Archive!</h1>
-            <p class="text-gray-600 dark:text-gray-300 mb-8">Please login to continue</p>
+        <div class="w-full max-w-md bg-white dark:bg-gray-800 rounded-xl shadow-xl p-8 text-center space-y-6">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Create Your Custom Home Dashboard</h1>
+            <p class="text-gray-600 dark:text-gray-300">Login to get started</p>
 
-            <!-- Login Button -->
-            <a href="/v1/auth/auth0" 
-                class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600">
-                Login with Auth0
-            </a>
+            <div class="space-y-4">
+                <!-- Auth0 Login -->
+                <a href="/v1/auth/auth0" 
+                   class="flex items-center justify-center gap-3 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors dark:bg-blue-500 dark:hover:bg-blue-600">
+                    <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 .587l3.668 7.568L24 9.423l-6 5.926 1.416 8.261L12 18.896l-7.416 4.714L6 15.349 0 9.423l8.332-1.268z"/></svg>
+                    Login with Auth0
+                </a>
+
+                <!-- Google Login -->
+                <a href="/v1/auth/google" 
+                   class="flex items-center justify-center gap-3 bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition-colors dark:bg-red-500 dark:hover:bg-red-600">
+                    <svg class="w-5 h-5 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path d="M44.5 20H24v8.5h11.9c-1.4 4-5.3 6.9-9.9 6.9-5.9 0-10.8-4.8-10.8-10.8S20.1 13.8 26 13.8c2.7 0 5.1.9 7 2.7l6.2-6.2C35.2 6.5 30.8 5 26 5 14.3 5 5 14.3 5 26s9.3 21 21 21c10.5 0 20.1-7.8 21-21 0-.7 0-1.3-.1-2z"/></svg>
+                    Login with Google
+                </a>
+            </div>
         </div>
     </body>
     </html>

@@ -139,7 +139,7 @@ func (app *application) readIntQuery(qs url.Values, key string, v *validator.Val
 	return int32(i) // Return the valid int32 value
 }
 
-func loadEnvironment() (int, string, string, int, int, time.Duration, string, string) {
+func loadEnvironment() (int, string, string, int, int, time.Duration, string, string, string, string, int) {
 	if err := godotenv.Load(); err != nil {
 		log.Fatalf("Failed to load the env vars: %v", err)
 	}
@@ -179,8 +179,18 @@ func loadEnvironment() (int, string, string, int, int, time.Duration, string, st
 		log.Fatal("SENDGRID_API_KEY environment variable is required")
 	}
 
+	redisAddr := os.Getenv("REDIS_ADDR")
+	redisPassword := os.Getenv("REDIS_PASSWORD")
+	redisDB, err := strconv.Atoi(os.Getenv("REDIS_DB"))
+	if err != nil {
+		log.Fatal("Failed to convert redisDB to int")
+	}
+	// if redisAddr == "" || redisPassword == "" {
+	// 	log.Fatal("REDIS environment variables are required")
+	// }
+
 	//return the env variables
-	return port, env, dsn, dbMaxOpenConns, dbMaxIdleConns, dbMaxIdleTime, sessionKey, sendGridKey
+	return port, env, dsn, dbMaxOpenConns, dbMaxIdleConns, dbMaxIdleTime, sessionKey, sendGridKey, redisAddr, redisPassword, redisDB
 }
 
 // The background() helper accepts an arbitrary function as a parameter.

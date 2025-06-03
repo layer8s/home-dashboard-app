@@ -24,6 +24,18 @@ templ Leagues(leagues []db.League) {
     </div>
 }
 
+templ MagicMirror() {
+    <div class="min-h-screen px-4 py-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="leagues-dashboard">
+                <h1 class="text-3xl font-bold mb-6">Magic Mirror Test</h1>
+                <div class="overflow-x-auto rounded-lg shadow">
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
 templ LeaguesTable(leagues []db.League) {
     <table class="min-w-full divide-y divide-gray-700 bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
         <thead>

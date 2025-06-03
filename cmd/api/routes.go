@@ -41,5 +41,7 @@ func (app *application) routes() http.Handler {
 
 	router.HandlerFunc(http.MethodGet, "/login", app.loginTemplHandler)
 
+	router.HandlerFunc(http.MethodGet, "/mm", app.magicMirrorHandler)
+
 	return app.recoverPanic(router)
 }

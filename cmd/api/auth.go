@@ -3,14 +3,18 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"os"
 	"strings"
 	"sync"
 
 	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/layer8s/home-dashboard-app/internal/db"
 	"golang.org/x/oauth2"
 )
 
@@ -198,6 +202,28 @@ func (a *application) HandleCallback(w http.ResponseWriter, r *http.Request) {
 	// 	a.serverErrorResponse(w, r, err)
 	// }
 
+	var nullableEmail sql.NullString
+	if claims.Email != "" {
+		nullableEmail = sql.NullString{String: claims.Email, Valid: true}
+	} else {
+		nullableEmail = sql.NullString{Valid: false}
+	}
+
+	//Upsert user info into DB
+	user, err := a.queries.UpsertUser(r.Context(), db.UpsertUserParams{
+		Name:       claims.Name,
+		Email:      nullableEmail,
+		Activated:  true,
+		Provider:   provider,
+		ProviderID: claims.Sub,
+	})
+	if err != nil {
+		a.logger.Error("failed to upsert user", err)
+	}
+
+	fmt.Printf("User inserted or updated: ID=%d, Version=%d, CreatedAt=%s\n",
+		user.ID, user.Version, user.CreatedAt)
+
 	http.Redirect(w, r, "/v1/dashboard", http.StatusSeeOther)
 }
 
@@ -206,8 +232,20 @@ func (a *application) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	session.Options.MaxAge = -1
 	session.Save(r, w)
 
-	err := a.writeJSON(w, http.StatusOK, envelope{"message": "Successfully logged out"}, nil)
-	if err != nil {
-		a.serverErrorResponse(w, r, err)
-	}
+	// err := a.writeJSON(w, http.StatusOK, envelope{"message": "Successfully logged out"}, nil)
+	// if err != nil {
+	// 	a.serverErrorResponse(w, r, err)
+	// }
+	domain := os.Getenv("AUTH0_DOMAIN")
+	clientID := os.Getenv("AUTH0_CLIENT_ID")
+	postLogoutRedirectURI := "http://localhost:4000/"
+
+	logoutURL := fmt.Sprintf(
+		"https://%s/oidc/logout?client_id=%s&post_logout_redirect_uri=%s",
+		domain,
+		url.QueryEscape(clientID),
+		url.QueryEscape(postLogoutRedirectURI),
+	)
+
+	http.Redirect(w, r, logoutURL, http.StatusSeeOther)
 }

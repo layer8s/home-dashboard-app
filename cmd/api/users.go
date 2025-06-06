@@ -1,12 +1,9 @@
 package main
 
 import (
-	"errors"
 	"net/http"
-	"time"
 
 	"github.com/layer8s/home-dashboard-app/internal/data"
-	"github.com/layer8s/home-dashboard-app/internal/db"
 	"github.com/layer8s/home-dashboard-app/internal/validator"
 )
 
@@ -18,9 +15,9 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		Password *string `json:"password"`
 	}
 
-	var (
-		ErrDuplicateEmail = errors.New("duplicate email")
-	)
+	// var (
+	// 	ErrDuplicateEmail = errors.New("duplicate email")
+	// )
 
 	// Parse the request body into the anonymous struct.
 	err := app.readJSON(w, r, &input)
@@ -55,49 +52,49 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	userParams := &db.InsertUserParams{
-		Name:         *input.Name,
-		Email:        *input.Email,
-		Activated:    false,
-		PasswordHash: []byte(*user.Password.Hash()),
-	}
+	// userParams := &db.InsertUserParams{
+	// 	Name:         *input.Name,
+	// 	Email:        *input.Email,
+	// 	Activated:    false,
+	// 	PasswordHash: []byte(*user.Password.Hash()),
+	// }
 
-	// Insert the user data into the database.
-	userRow, err := app.queries.InsertUser(r.Context(), *userParams)
-	if err != nil {
-		if err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"` {
-			app.serverErrorResponse(w, r, ErrDuplicateEmail)
-			return
-		}
-		app.serverErrorResponse(w, r, err)
-		return
-	}
+	// // // Insert the user data into the database.
+	// userRow, err := app.queries.InsertUser(r.Context(), *userParams)
+	// if err != nil {
+	// 	if err.Error() == `pq: duplicate key value violates unique constraint "users_email_key"` {
+	// 		app.serverErrorResponse(w, r, ErrDuplicateEmail)
+	// 		return
+	// 	}
+	// 	app.serverErrorResponse(w, r, err)
+	// 	return
+	// }
 
-	user.ID = userRow.ID
-	user.CreatedAt = userRow.CreatedAt
+	// user.ID = userRow.ID
+	// user.CreatedAt = userRow.CreatedAt
 
-	tokenService := data.NewTokenService(app.queries)
+	// tokenService := data.NewTokenService(app.queries)
 
-	token, err := tokenService.New(r.Context(), user.ID, 3*24*time.Hour, data.ScopeActivation)
-	if err != nil {
-		app.serverErrorResponse(w, r, err)
-		return
-	}
+	// token, err := tokenService.New(r.Context(), user.ID, 3*24*time.Hour, data.ScopeActivation)
+	// if err != nil {
+	// 	app.serverErrorResponse(w, r, err)
+	// 	return
+	// }
 
-	app.background(func() {
+	// app.background(func() {
 
-		data := map[string]any{
-			"activationToken": token.Plaintext,
-			"userID":          user.ID,
-		}
-		app.logger.Info("User data info: ", data)
+	// 	data := map[string]any{
+	// 		"activationToken": token.Plaintext,
+	// 		"userID":          user.ID,
+	// 	}
+	// 	app.logger.Info("User data info: ", data)
 
-		err = app.mailer.Send(user.Email, "user_welcome.tmpl", data)
-		if err != nil {
-			app.logger.Error((err.Error()))
-		}
+	// 	err = app.mailer.Send(user.Email, "user_welcome.tmpl", data)
+	// 	if err != nil {
+	// 		app.logger.Error((err.Error()))
+	// 	}
 
-	})
+	// })
 
 	// Write a JSON response containing the user data along with a 201 Created status
 	// code.

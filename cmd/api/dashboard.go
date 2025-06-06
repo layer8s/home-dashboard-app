@@ -2,7 +2,9 @@ package main
 
 import (
 	"net/http"
+	"strconv"
 
+	"github.com/layer8s/home-dashboard-app/internal/db"
 	"github.com/layer8s/home-dashboard-app/templates"
 )
 
@@ -41,36 +43,49 @@ func (app *application) dashboardHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	// Extract session values and convert to pointers
-	var name, email, provider string
-	var namePtr, emailPtr, providerPtr *string
+	var name, email, provider, sub string
+	var hasName, hasEmail bool
 
 	// Handle name
 	if nameVal, ok := session.Values["name"].(string); ok {
 		name = nameVal
-		namePtr = &name
+		hasName = true
 	}
 
 	// Handle email
 	if emailVal, ok := session.Values["email"].(string); ok {
 		email = emailVal
+		hasEmail = true
+	}
+
+	provider = session.Values["provider"].(string)
+	sub = session.Values["user_id"].(string)
+
+	// Get user data from database
+	user, err := app.queries.GetUserByProvider(r.Context(), db.GetUserByProviderParams{
+		Provider:   provider,
+		ProviderID: sub,
+	})
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	var namePtr, emailPtr *string
+	if hasName {
+		namePtr = &name
+	}
+	if hasEmail {
 		emailPtr = &email
 	}
-
-	// Handle provider
-	if providerVal, ok := session.Values["provider"].(string); ok {
-		provider = providerVal
-		providerPtr = &provider
-	}
-
-	// // Check if any required values are missing
-	// if namePtr == nil || emailPtr == nil || providerPtr == nil {
-	//     app.sessionRequiredResponse(w, r)
-	//     return
-	// }
+	// These always exist due to auth middleware
+	providerPtr := &provider
+	subPtr := &sub
 
 	// If it's an HTMX request, return just the user info partial
 	if r.Header.Get("HX-Request") == "true" {
-		err := templates.UserInfo(namePtr, emailPtr, providerPtr).Render(r.Context(), w)
+		userIDStr := strconv.FormatInt(user.ID, 10)
+		err := templates.UserInfo(&user.Name, emailPtr, providerPtr, &userIDStr).Render(r.Context(), w)
 		if err != nil {
 			app.serverErrorResponse(w, r, err)
 		}
@@ -79,7 +94,7 @@ func (app *application) dashboardHandler(w http.ResponseWriter, r *http.Request)
 
 	// Render the full dashboard inside the base layout
 	err = templates.Base(
-		templates.Dashboard(namePtr, emailPtr, providerPtr),
+		templates.Dashboard(namePtr, emailPtr, providerPtr, subPtr),
 	).Render(r.Context(), w)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
